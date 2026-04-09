@@ -435,7 +435,7 @@ function renderUpcomingShow() {
 function renderDonations() { const items = (state.donations && state.donations.length) ? state.donations : fallbackData.donations; q("donation-links").innerHTML = items.map((item) => `<article class="donation-card"><h3>${item.label}</h3><p>${item.note}</p><p><strong>${item.handle}</strong></p><a href="${item.url}" target="_blank" rel="noreferrer">Open ${item.label}</a></article>`).join(""); }
 function renderArchive() {
   q("archive-grid").innerHTML = state.shows.map((show) => `<article class="archive-card" data-show-id="${show.id}" tabindex="0" role="button" aria-label="Open ${show.title}"><img src="${show.banner || ''}" alt="${show.title} flyer"><div class="archive-copy"><p class="eyebrow">${formatDate(show.date)}</p><h3>${show.title}</h3><p>${show.venue}</p></div></article>`).join("");
-  const selected = state.shows.find((show) => show.id === state.selectedShowId) || state.shows[0];
+  const selected = state.shows.find((show) => String(show.id) === String(state.selectedShowId || "")) || state.shows[0];
   const detail = q("show-detail");
   if (!selected) { detail.classList.add("hidden"); detail.classList.add("mobile-collapsed"); return; }
   const hideMobileDetail = window.innerWidth <= 640 && !state.selectedShowId;

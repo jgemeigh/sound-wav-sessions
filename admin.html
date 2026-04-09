@@ -3183,7 +3183,7 @@
         }
         if (showDetail) {
           const selectedId = window.__soundwavState?.selectedShowId;
-          const selected = shows.find((show) => show.id === selectedId) || shows[0];
+          const selected = shows.find((show) => String(show.id) === String(selectedId || "")) || shows[0];
           if (!selected) {
             showDetail.classList.add("hidden");
             showDetail.classList.add("mobile-collapsed");
