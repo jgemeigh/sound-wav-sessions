@@ -1,5 +1,6 @@
 node_modules/
 .supabase/
+supabase/.temp/
 
 # OS / editor noise
 .DS_Store
