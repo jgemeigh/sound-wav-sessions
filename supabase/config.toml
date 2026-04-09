@@ -378,6 +378,9 @@ verify_jwt = false
 [functions.gmail-oauth-callback]
 verify_jwt = false
 
+[functions.create-admin-users]
+verify_jwt = false
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 

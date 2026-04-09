@@ -752,10 +752,11 @@ window.handleOwnerLogin = async function handleOwnerLogin() {
   const form = document.getElementById("login-form");
   if (!form) return false;
   const formData = new FormData(form);
-  const email = String(formData.get("email") || "").trim().toLowerCase();
+  const rawLogin = String(formData.get("email") || "").trim().toLowerCase();
+  const email = rawLogin.includes("@") ? rawLogin : `${rawLogin}@soundwav-admin.example.com`;
   const password = String(formData.get("password") || "");
-  if (!email || !password) {
-    setMessage("login-message", "Enter your email and password.", "error");
+  if (!rawLogin || !password) {
+    setMessage("login-message", "Enter your email or username and password.", "error");
     return false;
   }
   if (email === "owner@soundwav.local" && password === "project2") {

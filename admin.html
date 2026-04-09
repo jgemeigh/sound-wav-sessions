@@ -212,7 +212,7 @@
           <label>Email<input type="email" name="email" required></label>
           <label>Password<input type="password" name="password" required></label>
           <button class="button" id="login-button" type="button">Log in</button>
-          <p class="small-note">Use your Supabase admin account, or owner@soundwav.local / project2 as a local fallback.</p>
+          <p class="small-note">Use your Supabase admin account, one of the admin usernames (`remody.rx`, `static.soul`, `ahrs.artis`), or owner@soundwav.local / project2 as a local fallback.</p>
           <p class="form-message" id="login-message" aria-live="polite"></p>
         </form>
       </section>
@@ -442,6 +442,7 @@
     (function () {
       const LOCAL_OWNER_EMAIL = 'owner@soundwav.local';
       const LOCAL_OWNER_PASSWORD = 'project2';
+      const ADMIN_ALIAS_DOMAIN = 'soundwav-admin.example.com';
       const OWNER_KEY = 'soundwav-owner-session';
       const q = (id) => document.getElementById(id);
       const setLoginMessage = (text, tone) => {
@@ -482,10 +483,11 @@
         const form = q('login-form');
         if (!form) return false;
         const formData = new FormData(form);
-        const email = String(formData.get('email') || '').trim().toLowerCase();
+        const rawLogin = String(formData.get('email') || '').trim().toLowerCase();
+        const email = rawLogin.includes('@') ? rawLogin : `${rawLogin}@${ADMIN_ALIAS_DOMAIN}`;
         const password = String(formData.get('password') || '');
-        if (!email || !password) {
-          setLoginMessage('Enter your email and password.', 'error');
+        if (!rawLogin || !password) {
+          setLoginMessage('Enter your email or username and password.', 'error');
           return false;
         }
         if (email === LOCAL_OWNER_EMAIL && password === LOCAL_OWNER_PASSWORD) {
