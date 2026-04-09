@@ -255,7 +255,30 @@ textarea { resize: vertical; }
 .prefixed-input input:focus { outline: none; }
 .inline-preview { width: 100%; max-width: 320px; border-radius: 1rem; border: 1px solid var(--line); margin-top: .35rem; }
 .inline-thumb-row { display: flex; flex-wrap: wrap; gap: .5rem; }
-.inline-thumb-row img { width: 88px; height: 88px; object-fit: cover; border-radius: .8rem; border: 1px solid var(--line); }
+.inline-thumb { position: relative; width: 88px; height: 88px; flex: 0 0 auto; }
+.inline-thumb-row img,
+.inline-thumb img { width: 88px; height: 88px; object-fit: cover; border-radius: .8rem; border: 1px solid var(--line); display: block; background: rgba(255,255,255,.03); }
+.inline-thumb-remove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(11,11,13,.88);
+  color: var(--chalk);
+  font-size: .9rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.inline-thumb-remove:hover { border-color: var(--spray); color: var(--spray); }
+.inline-preview-shell { position: relative; display: inline-block; width: 100%; max-width: 320px; }
+.inline-preview-shell .inline-preview { margin-top: 0; }
+.inline-preview-shell .inline-thumb-remove { top: 10px; right: 10px; }
 .admin-list-item .inline-editor .list-actions { margin-top: .25rem; }
 .archive-admin-hero {
   width: 100%;

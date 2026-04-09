@@ -2280,6 +2280,7 @@
       let editingShowId = "";
       let pendingArchiveGalleryFiles = [];
       const pendingInlineShowGalleryFiles = new Map();
+      const pendingRemovedShowGalleryPaths = new Map();
       const fileSignature = (file) => [file?.name || "", file?.size || 0, file?.lastModified || 0].join("::");
       const mergeSelectedFiles = (currentFiles, nextFiles) => {
         const seen = new Set((currentFiles || []).map(fileSignature));
@@ -2291,6 +2292,20 @@
           merged.push(file);
         });
         return merged;
+      };
+      const parseArrayJson = (value) => {
+        try {
+          const parsed = JSON.parse(value || "[]");
+          return Array.isArray(parsed) ? parsed : [];
+        } catch (_) {
+          return [];
+        }
+      };
+      const removeStorageObjects = async (api, paths) => {
+        const removable = [...new Set((paths || []).map((item) => String(item || "").trim()).filter((item) => item && !/^https?:\/\//i.test(item) && !/^data:/i.test(item) && !/^placeholder:\/\//i.test(item)))];
+        if (!removable.length) return;
+        const result = await api.storage.from(BUCKET).remove(removable);
+        if (result.error) console.error(result.error);
       };
       const renderPreviewGrid = (node, items, altPrefix) => {
         if (!node) return;
@@ -2317,6 +2332,44 @@
           reader.readAsDataURL(item);
         });
       };
+      const renderManagedThumbGrid = (node, items, altPrefix) => {
+        if (!node) return;
+        const previews = Array.from(items || []).slice(0, 4);
+        node.innerHTML = "";
+        if (!previews.length) {
+          node.classList.add("hidden");
+          return;
+        }
+        node.classList.remove("hidden");
+        previews.forEach((item, index) => {
+          const wrap = document.createElement("span");
+          wrap.className = "inline-thumb";
+          const img = document.createElement("img");
+          img.alt = `${altPrefix} ${index + 1}`;
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "inline-thumb-remove";
+          button.textContent = "x";
+          button.setAttribute("aria-label", "Remove image");
+          if (item.kind === "existing") button.dataset.removeExistingShowImageIndex = String(item.index);
+          if (item.kind === "pending") button.dataset.removePendingShowImageIndex = String(item.index);
+          if (typeof item.src === "string" && item.src) {
+            img.src = item.src;
+            wrap.appendChild(img);
+            wrap.appendChild(button);
+            node.appendChild(wrap);
+            return;
+          }
+          const reader = new FileReader();
+          reader.onload = () => {
+            img.src = String(reader.result || "");
+            wrap.appendChild(img);
+            wrap.appendChild(button);
+            node.appendChild(wrap);
+          };
+          reader.readAsDataURL(item.file);
+        });
+      };
       const setArchiveGalleryPreview = (files) => {
         const previewGrid = q("show-gallery-preview-grid");
         const label = q("show-gallery-filename");
@@ -2330,12 +2383,13 @@
       const setInlineShowGalleryPreview = (row, existingImages, pendingFiles) => {
         const preview = row?.querySelector("[data-inline-show-gallery-preview]");
         if (!preview) return;
-        const existingSlots = Math.max(0, 4 - (pendingFiles || []).length);
+        const resolvedExistingImages = Array.isArray(existingImages) ? existingImages : parseArrayJson(row?.dataset?.existingGallery);
+        const resolvedPending = Array.isArray(pendingFiles) ? pendingFiles : (pendingInlineShowGalleryFiles.get(row?.dataset?.showInlineId || "") || []);
         const previewItems = [
-          ...Array.from(existingImages || []).slice(0, existingSlots),
-          ...Array.from(pendingFiles || []).slice(0, 4)
+          ...resolvedExistingImages.map((src, index) => ({ kind: "existing", src, index })),
+          ...resolvedPending.map((file, index) => ({ kind: "pending", file, index }))
         ].slice(0, 4);
-        renderPreviewGrid(preview, previewItems, "Archive gallery preview");
+        renderManagedThumbGrid(preview, previewItems, "Archive gallery preview");
       };
       const nextDuplicateShowTitle = (title, items) => {
         const raw = String(title || "Untitled show").trim() || "Untitled show";
@@ -2360,19 +2414,32 @@
       };
       const setArchiveInlinePreview = (row, src, title) => {
         if (!row) return;
-        let img = row.querySelector(".inline-preview");
+        let shell = row.querySelector("[data-inline-show-banner-shell]");
+        let img = shell?.querySelector(".inline-preview") || row.querySelector(".inline-preview");
         if (!src) {
-          if (img) img.remove();
+          if (shell) shell.remove();
+          else if (img) img.remove();
           const label = row.querySelector("[data-inline-show-banner-label]");
           if (label) label.textContent = "Choose image";
           return;
         }
         if (!img) {
+          shell = document.createElement("div");
+          shell.className = "inline-preview-shell";
+          shell.dataset.inlineShowBannerShell = "true";
           img = document.createElement("img");
           img.className = "inline-preview";
+          shell.appendChild(img);
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "inline-thumb-remove";
+          button.textContent = "x";
+          button.setAttribute("aria-label", "Remove banner image");
+          button.dataset.inlineShowRemoveBanner = "true";
+          shell.appendChild(button);
           const labelNode = row.querySelector("[data-inline-show-banner-label]")?.closest("label");
-          if (labelNode && labelNode.parentNode) labelNode.parentNode.insertBefore(img, labelNode.nextSibling);
-          else row.appendChild(img);
+          if (labelNode && labelNode.parentNode) labelNode.parentNode.insertBefore(shell, labelNode.nextSibling);
+          else row.appendChild(shell);
         }
         img.src = src;
         img.alt = (title || "Archive banner") + " preview";
@@ -2380,7 +2447,7 @@
         if (label) label.textContent = "Replace image";
       };
       const showEditorMarkup = (item) =>
-        '<div class="inline-editor" data-show-inline-id="' + (item?.id || "") + '">' +
+        '<div class="inline-editor" data-show-inline-id="' + (item?.id || "") + '" data-existing-gallery=\'' + JSON.stringify((item?.gallery || []).slice(0, 4)).replace(/'/g, "&apos;") + '\' data-existing-gallery-paths=\'' + JSON.stringify((item?.galleryPaths || []).slice(0, 4)).replace(/'/g, "&apos;") + '\' data-existing-banner="' + ((item?.banner || "").replace(/"/g, '&quot;')) + '" data-existing-banner-path="' + ((item?.bannerPath || "").replace(/"/g, '&quot;')) + '" data-remove-banner="false">' +
           '<div class="inline-grid">' +
             '<label>Show title<input type="text" data-inline-show-title value="' + ((item?.title || "").replace(/"/g, '&quot;')) + '"></label>' +
             '<label>Date<input type="date" data-inline-show-date value="' + (item?.date || "") + '"></label>' +
@@ -2391,9 +2458,9 @@
           '<label>Description<textarea rows="4" data-inline-show-description>' + (item?.description || "") + '</textarea></label>' +
           '<label>Main footage / playlist links<textarea rows="4" data-inline-show-videos>' + ((item?.videos || []).join("\n")) + '</textarea></label>' +
           '<label><span data-inline-show-banner-label>' + ((item?.banner || item?.bannerPath) ? 'Replace image' : 'Choose image') + '</span><input type="file" data-inline-show-banner accept="image/*"></label>' +
-          ((item?.banner || "") ? '<img class="inline-preview" src="' + item.banner + '" alt="' + ((item?.title || "Archive banner").replace(/"/g, '&quot;')) + '">' : '') +
+          ((item?.banner || "") ? '<div class="inline-preview-shell" data-inline-show-banner-shell><img class="inline-preview" src="' + item.banner + '" alt="' + ((item?.title || "Archive banner").replace(/"/g, '&quot;')) + '"><button class="inline-thumb-remove" type="button" aria-label="Remove banner image" data-inline-show-remove-banner="true">x</button></div>' : '') +
           '<label>Additional photos<input type="file" data-inline-show-gallery accept="image/*" multiple></label>' +
-          '<div class="inline-thumb-row' + (((item?.gallery || []).length ? '' : ' hidden')) + '" data-inline-show-gallery-preview>' + ((item?.gallery || []).slice(0, 4).map((image) => '<img src="' + image + '" alt="' + ((item?.title || "Archive").replace(/"/g, '&quot;')) + ' gallery image">').join("")) + '</div>' +
+          '<div class="inline-thumb-row' + (((item?.gallery || []).length ? '' : ' hidden')) + '" data-inline-show-gallery-preview>' + ((item?.gallery || []).slice(0, 4).map((image, index) => '<span class="inline-thumb"><img src="' + image + '" alt="' + ((item?.title || "Archive").replace(/"/g, '&quot;')) + ' gallery image"><button class="inline-thumb-remove" type="button" aria-label="Remove gallery image" data-remove-existing-show-image-index="' + index + '">x</button></span>').join("")) + '</div>' +
           '<div class="list-actions"><button class="mini-button" type="button" data-save-show-id="' + (item?.id || "") + '">Save</button><button class="mini-button ghost" type="button" data-cancel-show-id="' + (item?.id || "") + '">Cancel</button><button class="mini-button ghost" type="button" data-duplicate-show-id="' + (item?.id || "") + '">Duplicate show</button><button class="mini-button ghost" type="button" data-show-final-copy="' + (item?.id || "") + '">Copy details</button><button class="mini-button ghost" type="button" data-show-final-unarchive="' + (item?.id || "") + '">Un-archive</button><button class="mini-button danger" type="button" data-show-final-delete="' + (item?.id || "") + '">Delete</button></div>' +
         '</div>';
       const sortByDateDesc = (items) =>
@@ -2771,6 +2838,7 @@
           const file = input.files && input.files[0];
           if (!file) return;
           const row = input.closest("[data-show-inline-id]");
+          if (row) row.dataset.removeBanner = "false";
           const title = row?.querySelector("[data-inline-show-title]")?.value || "Archive banner";
           const reader = new FileReader();
           reader.onload = () => setArchiveInlinePreview(row, String(reader.result || ""), title);
@@ -2782,11 +2850,10 @@
           const row = input.closest("[data-show-inline-id]");
           const showId = row?.dataset.showInlineId || "";
           if (!row || !showId) return;
-          const existing = ((window.__soundwavState?.shows && window.__soundwavState.shows.length) ? window.__soundwavState.shows : (getPublicCache().shows || [])).find((entry) => entry.id === showId);
           const nextPending = mergeSelectedFiles(pendingInlineShowGalleryFiles.get(showId) || [], input.files || []);
           pendingInlineShowGalleryFiles.set(showId, nextPending);
           input.value = "";
-          setInlineShowGalleryPreview(row, existing?.gallery || [], nextPending);
+          setInlineShowGalleryPreview(row, undefined, nextPending);
         });
         activeShowAdminList?.addEventListener("click", async (event) => {
           const edit = event.target.closest("[data-show-final-edit]");
@@ -2799,8 +2866,50 @@
           const cancel = event.target.closest("[data-cancel-show-id]");
           if (cancel) {
             pendingInlineShowGalleryFiles.delete(cancel.dataset.cancelShowId || "");
+            pendingRemovedShowGalleryPaths.delete(cancel.dataset.cancelShowId || "");
             editingShowId = "";
             renderShowAdmin();
+            return;
+          }
+          const removeExistingImage = event.target.closest("[data-remove-existing-show-image-index]");
+          if (removeExistingImage) {
+            const row = event.target.closest("[data-show-inline-id]");
+            const showId = row?.dataset.showInlineId || "";
+            if (!row || !showId) return;
+            const index = Number(removeExistingImage.dataset.removeExistingShowImageIndex || -1);
+            const existingImages = parseArrayJson(row.dataset.existingGallery);
+            const existingPaths = parseArrayJson(row.dataset.existingGalleryPaths);
+            const removedPath = existingPaths[index] || "";
+            row.dataset.existingGallery = JSON.stringify(existingImages.filter((_, itemIndex) => itemIndex !== index));
+            row.dataset.existingGalleryPaths = JSON.stringify(existingPaths.filter((_, itemIndex) => itemIndex !== index));
+            if (removedPath) {
+              pendingRemovedShowGalleryPaths.set(showId, [...new Set([...(pendingRemovedShowGalleryPaths.get(showId) || []), removedPath])]);
+            }
+            setInlineShowGalleryPreview(row);
+            return;
+          }
+          const removePendingImage = event.target.closest("[data-remove-pending-show-image-index]");
+          if (removePendingImage) {
+            const row = event.target.closest("[data-show-inline-id]");
+            const showId = row?.dataset.showInlineId || "";
+            if (!row || !showId) return;
+            const index = Number(removePendingImage.dataset.removePendingShowImageIndex || -1);
+            const currentPending = pendingInlineShowGalleryFiles.get(showId) || [];
+            pendingInlineShowGalleryFiles.set(showId, currentPending.filter((_, itemIndex) => itemIndex !== index));
+            setInlineShowGalleryPreview(row);
+            return;
+          }
+          const removeBanner = event.target.closest("[data-inline-show-remove-banner]");
+          if (removeBanner) {
+            const row = event.target.closest("[data-show-inline-id]");
+            if (!row) return;
+            row.dataset.removeBanner = "true";
+            row.dataset.existingBanner = "";
+            row.dataset.existingBannerPath = "";
+            const fileInput = row.querySelector("[data-inline-show-banner]");
+            if (fileInput) fileInput.value = "";
+            const title = row.querySelector("[data-inline-show-title]")?.value || "Archive banner";
+            setArchiveInlinePreview(row, "", title);
             return;
           }
           const duplicate = event.target.closest("[data-duplicate-show-id]");
@@ -2864,11 +2973,13 @@
               const row = event.target.closest("[data-show-inline-id]");
               const existing = ((window.__soundwavState?.shows && window.__soundwavState.shows.length) ? window.__soundwavState.shows : (getPublicCache().shows || [])).find((entry) => entry.id === save.dataset.saveShowId);
               if (!row || !existing) throw new Error("Archive row not found.");
-              let bannerPath = existing.bannerPath || "";
+              const originalBannerPath = existing.bannerPath || "";
+              let bannerPath = row.dataset.removeBanner === "true" ? "" : (row.dataset.existingBannerPath || originalBannerPath);
               const bannerFile = row.querySelector("[data-inline-show-banner]")?.files?.[0];
               if (bannerFile) {
                 const uploaded = await uploadFiles(api, `shows/${existing.id}/banner`, [bannerFile]);
                 if (uploaded[0]) bannerPath = uploaded[0];
+                row.dataset.removeBanner = "false";
               }
               const payload = {
                 title: String(row.querySelector("[data-inline-show-title]")?.value || "").trim(),
@@ -2894,14 +3005,24 @@
                 const insertVideos = await api.from("show_media").insert(videos.map((external_url, index) => ({ show_id: existing.id, media_kind: "video", external_url, sort_order: index })));
                 if (insertVideos.error) throw insertVideos.error;
               }
+              const removedGalleryPaths = pendingRemovedShowGalleryPaths.get(existing.id) || [];
+              if (removedGalleryPaths.length) {
+                const deleteGallery = await api.from("show_media").delete().eq("show_id", existing.id).eq("media_kind", "image").in("storage_path", removedGalleryPaths);
+                if (deleteGallery.error) throw deleteGallery.error;
+                await removeStorageObjects(api, removedGalleryPaths);
+              }
               const galleryFiles = pendingInlineShowGalleryFiles.get(existing.id) || [];
               const galleryUploads = await uploadFiles(api, `shows/${existing.id}/gallery`, galleryFiles);
               if (galleryUploads.length) {
-                const existingGalleryCount = existing.galleryPaths?.length || 0;
+                const existingGalleryCount = parseArrayJson(row.dataset.existingGalleryPaths).length;
                 const insertGallery = await api.from("show_media").insert(galleryUploads.map((storage_path, index) => ({ show_id: existing.id, media_kind: "image", storage_path, sort_order: existingGalleryCount + index })));
                 if (insertGallery.error) throw insertGallery.error;
               }
+              if (originalBannerPath && originalBannerPath !== bannerPath && (row.dataset.removeBanner === "true" || bannerFile)) {
+                await removeStorageObjects(api, [originalBannerPath]);
+              }
               pendingInlineShowGalleryFiles.delete(existing.id);
+              pendingRemovedShowGalleryPaths.delete(existing.id);
               await syncShowsState();
               editingShowId = "";
               renderShowAdmin();
@@ -3160,6 +3281,7 @@
       let editingAffiliateId = "";
       let editingArtistId = "";
       const pendingInlineArtistFiles = new Map();
+      const pendingRemovedArtistImagePaths = new Map();
       const fileSignature = (file) => [file?.name || "", file?.size || 0, file?.lastModified || 0].join("::");
       const mergeSelectedFiles = (currentFiles, nextFiles) => {
         const seen = new Set((currentFiles || []).map(fileSignature));
@@ -3172,30 +3294,61 @@
         });
         return merged;
       };
+      const parseInlineArray = (value) => {
+        try {
+          const parsed = JSON.parse(value || "[]");
+          return Array.isArray(parsed) ? parsed : [];
+        } catch (_) {
+          return [];
+        }
+      };
       const setInlineArtistPreview = (row, existingImages, pendingFiles) => {
         const preview = row?.querySelector("[data-artist-inline-preview]");
         if (!preview) return;
-        const existingSlots = Math.max(0, 4 - (pendingFiles || []).length);
-        const previewItems = [
-          ...Array.from(existingImages || []).slice(0, existingSlots),
-          ...Array.from(pendingFiles || []).slice(0, 4)
-        ].slice(0, 4);
         preview.innerHTML = "";
-        if (!previewItems.length) return;
+        const resolvedExisting = Array.isArray(existingImages) ? existingImages : parseInlineArray(row?.dataset?.existingImages);
+        const resolvedPending = Array.isArray(pendingFiles) ? pendingFiles : (pendingInlineArtistFiles.get(row?.closest("[data-artist-inline-id]")?.dataset?.artistInlineId || "") || []);
+        const previewItems = [
+          ...resolvedExisting.map((src, index) => ({ kind: "existing", src, index })),
+          ...resolvedPending.map((file, index) => ({ kind: "pending", file, index }))
+        ].slice(0, 4);
+        if (!previewItems.length) {
+          const fallback = document.createElement("span");
+          fallback.className = "inline-thumb";
+          const img = document.createElement("img");
+          img.alt = "Artist placeholder";
+          img.src = window.__soundwavArtistPlaceholder || "";
+          fallback.appendChild(img);
+          preview.appendChild(fallback);
+          return;
+        }
         previewItems.forEach((item, index) => {
+          const wrap = document.createElement("span");
+          wrap.className = "inline-thumb";
           const img = document.createElement("img");
           img.alt = `Artist image preview ${index + 1}`;
-          if (typeof item === "string") {
-            img.src = item;
-            preview.appendChild(img);
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "inline-thumb-remove";
+          button.textContent = "x";
+          button.setAttribute("aria-label", "Remove image");
+          if (item.kind === "existing") button.dataset.removeExistingArtistImageIndex = String(item.index);
+          if (item.kind === "pending") button.dataset.removePendingArtistImageIndex = String(item.index);
+          if (item.kind === "existing") {
+            img.src = item.src;
+            wrap.appendChild(img);
+            wrap.appendChild(button);
+            preview.appendChild(wrap);
             return;
           }
           const reader = new FileReader();
           reader.onload = () => {
             img.src = String(reader.result || "");
-            preview.appendChild(img);
+            wrap.appendChild(img);
+            wrap.appendChild(button);
+            preview.appendChild(wrap);
           };
-          reader.readAsDataURL(item);
+          reader.readAsDataURL(item.file);
         });
       };
       const sortNewsletters = (items) => {
@@ -3271,6 +3424,12 @@
           paths.push(path);
         }
         return paths;
+      };
+      const removeStorageObjects = async (api, paths) => {
+        const removable = [...new Set((paths || []).map((item) => String(item || "").trim()).filter((item) => item && !/^https?:\/\//i.test(item) && !/^data:/i.test(item) && !/^placeholder:\/\//i.test(item)))];
+        if (!removable.length) return;
+        const result = await api.storage.from(BUCKET).remove(removable);
+        if (result.error) console.error(result.error);
       };
       const refreshNewsletters = async (api) => {
         const { data, error } = await api.from("newsletters").select("*").order("created_at", { ascending: false });
@@ -3396,9 +3555,12 @@
         if (artistsRes.error) throw artistsRes.error;
         if (artistImagesRes.error) throw artistImagesRes.error;
         const imagesByArtist = new Map();
+        const imagePathsByArtist = new Map();
         (artistImagesRes.data || []).forEach((item) => {
           if (!imagesByArtist.has(item.artist_id)) imagesByArtist.set(item.artist_id, []);
+          if (!imagePathsByArtist.has(item.artist_id)) imagePathsByArtist.set(item.artist_id, []);
           imagesByArtist.get(item.artist_id).push(ownerStorageUrl(api, item.storage_path));
+          imagePathsByArtist.get(item.artist_id).push(item.storage_path);
         });
         const next = (artistsRes.data || []).map((artist) => ({
           id: artist.id,
@@ -3406,6 +3568,7 @@
           genre: artist.genre,
           bio: artist.bio,
           images: imagesByArtist.get(artist.id) || [],
+          imagePaths: imagePathsByArtist.get(artist.id) || [],
           links: {
             instagram: artist.instagram_url || "",
             spotify: artist.spotify_url || "",
@@ -3451,6 +3614,15 @@
         website: item?.links?.website || "",
         linktree: item?.links?.linktree || ""
       });
+      const artistInlineThumbsMarkup = (item) => {
+        const images = ((item?.images || []).map((image) => String(image || "").trim()).filter(Boolean)).slice(0, 4);
+        if (!images.length) {
+          return '<span class="inline-thumb"><img src="' + (window.__soundwavArtistPlaceholder || "") + '" alt="' + ((item?.name || "Artist").replace(/"/g, '&quot;')) + ' placeholder"></span>';
+        }
+        return images.map((image, index) => (
+          '<span class="inline-thumb"><img src="' + image + '" alt="' + ((item?.name || "Artist").replace(/"/g, '&quot;')) + ' image"><button class="inline-thumb-remove" type="button" aria-label="Remove artist image" data-remove-existing-artist-image-index="' + index + '">x</button></span>'
+        )).join("");
+      };
       const setAffiliatePreview = (src) => {
         const preview = q("affiliate-image-preview");
         if (!preview) return;
@@ -3636,7 +3808,7 @@
                 const linkCount = Object.values(links).filter(Boolean).length;
                 const imageCount = (item.images || []).length;
                 return editingArtistId === item.id
-                  ? '<article class="admin-list-item" data-artist-inline-id="' + item.id + '"><div class="inline-editor" data-artist-inline-editor data-existing-images=\'' + JSON.stringify((((item.images || []).map((image) => String(image || "").trim()).filter(Boolean).length ? (item.images || []).map((image) => String(image || "").trim()).filter(Boolean) : [window.__soundwavArtistPlaceholder || ""]).slice(0, 4))).replace(/'/g, "&apos;") + '\'><label>Artist name<input type="text" data-artist-name value="' + ((item.name || "").replace(/"/g, '&quot;')) + '"></label><label>Genre<input type="text" data-artist-genre value="' + ((item.genre || "").replace(/"/g, '&quot;')) + '"></label><label>Bio<textarea rows="4" data-artist-bio>' + (item.bio || "") + '</textarea></label><div class="inline-grid"><label>Instagram<input type="text" data-artist-instagram value="' + ((links.instagram || "").replace(/"/g, '&quot;')) + '"></label><label>Spotify<input type="text" data-artist-spotify value="' + ((links.spotify || "").replace(/"/g, '&quot;')) + '"></label><label>SoundCloud<input type="text" data-artist-soundcloud value="' + ((links.soundcloud || "").replace(/"/g, '&quot;')) + '"></label><label>Bandcamp<input type="text" data-artist-bandcamp value="' + ((links.bandcamp || "").replace(/"/g, '&quot;')) + '"></label><label>Website<input type="text" data-artist-website value="' + ((links.website || "").replace(/"/g, '&quot;')) + '"></label><label>Linktree<input type="text" data-artist-linktree value="' + ((links.linktree || "").replace(/"/g, '&quot;')) + '"></label></div><label>Add artist photos<input type="file" data-artist-photos accept="image/*" multiple></label><div class="inline-thumb-row" data-artist-inline-preview>' + ((((item.images || []).map((image) => String(image || "").trim()).filter(Boolean).length ? (item.images || []).map((image) => String(image || "").trim()).filter(Boolean) : [window.__soundwavArtistPlaceholder || ""]).slice(0, 4)).map((image) => '<img src="' + image + '" alt="' + ((item.name || "Artist").replace(/"/g, '&quot;')) + ' image">').join("")) + '</div><p>' + imageCount + ' image(s) / ' + linkCount + ' link(s)</p><div class="list-actions"><button class="mini-button" type="button" data-save-artist-id="' + item.id + '">Save</button><button class="mini-button ghost" type="button" data-cancel-artist-id="' + item.id + '">Cancel</button><button class="mini-button danger" type="button" data-delete-artist-id="' + item.id + '">Delete</button></div></div></article>'
+                  ? '<article class="admin-list-item" data-artist-inline-id="' + item.id + '"><div class="inline-editor" data-artist-inline-editor data-existing-images=\'' + JSON.stringify(((item.images || []).map((image) => String(image || "").trim()).filter(Boolean).slice(0, 4))).replace(/'/g, "&apos;") + '\' data-existing-image-paths=\'' + JSON.stringify((((item.imagePaths || []).map((image) => String(image || "").trim()).filter(Boolean)).slice(0, 4))).replace(/'/g, "&apos;") + '\'><label>Artist name<input type="text" data-artist-name value="' + ((item.name || "").replace(/"/g, '&quot;')) + '"></label><label>Genre<input type="text" data-artist-genre value="' + ((item.genre || "").replace(/"/g, '&quot;')) + '"></label><label>Bio<textarea rows="4" data-artist-bio>' + (item.bio || "") + '</textarea></label><div class="inline-grid"><label>Instagram<input type="text" data-artist-instagram value="' + ((links.instagram || "").replace(/"/g, '&quot;')) + '"></label><label>Spotify<input type="text" data-artist-spotify value="' + ((links.spotify || "").replace(/"/g, '&quot;')) + '"></label><label>SoundCloud<input type="text" data-artist-soundcloud value="' + ((links.soundcloud || "").replace(/"/g, '&quot;')) + '"></label><label>Bandcamp<input type="text" data-artist-bandcamp value="' + ((links.bandcamp || "").replace(/"/g, '&quot;')) + '"></label><label>Website<input type="text" data-artist-website value="' + ((links.website || "").replace(/"/g, '&quot;')) + '"></label><label>Linktree<input type="text" data-artist-linktree value="' + ((links.linktree || "").replace(/"/g, '&quot;')) + '"></label></div><label>Add artist photos<input type="file" data-artist-photos accept="image/*" multiple></label><div class="inline-thumb-row" data-artist-inline-preview>' + artistInlineThumbsMarkup(item) + '</div><p>' + imageCount + ' image(s) / ' + linkCount + ' link(s)</p><div class="list-actions"><button class="mini-button" type="button" data-save-artist-id="' + item.id + '">Save</button><button class="mini-button ghost" type="button" data-cancel-artist-id="' + item.id + '">Cancel</button><button class="mini-button danger" type="button" data-delete-artist-id="' + item.id + '">Delete</button></div></div></article>'
                   : '<article class="admin-list-item"><div class="inline-thumb-row">' + ((((item.images || []).map((image) => String(image || "").trim()).filter(Boolean).length ? (item.images || []).map((image) => String(image || "").trim()).filter(Boolean) : [window.__soundwavArtistPlaceholder || ""]).slice(0, 4)).map((image, index) => '<img class="' + (index === 0 ? 'artist-admin-preview' : '') + '" src="' + image + '" alt="' + ((item.name || "Artist").replace(/"/g, '&quot;')) + ' image ' + (index + 1) + '">').join("")) + '</div><p><strong>' + item.name + '</strong></p><p>' + (item.genre || "") + '</p><p>' + (item.bio || "") + '</p><p>' + imageCount + ' image(s) / ' + linkCount + ' link(s)</p><div class="list-actions"><button class="mini-button" type="button" data-edit-artist-id="' + item.id + '">Edit</button><button class="mini-button danger" type="button" data-delete-artist-id="' + item.id + '">Delete</button></div></article>';
               }).join("")
             : '<article class="admin-list-item"><p>No artists saved yet.</p></article>';
@@ -4116,10 +4288,39 @@
           const cancel = event.target.closest("[data-cancel-artist-id]");
           if (cancel) {
             pendingInlineArtistFiles.delete(cancel.dataset.cancelArtistId || "");
+            pendingRemovedArtistImagePaths.delete(cancel.dataset.cancelArtistId || "");
             editingArtistId = "";
             renderOwnerDataPanels();
             showOwnerWorkspace("artists");
             return setFormMessage("artist-profile-message", "", "");
+          }
+          const removeExistingImage = event.target.closest("[data-remove-existing-artist-image-index]");
+          if (removeExistingImage) {
+            const row = event.target.closest("[data-artist-inline-editor]");
+            const artistId = row?.closest("[data-artist-inline-id]")?.dataset.artistInlineId || "";
+            if (!row || !artistId) return;
+            const index = Number(removeExistingImage.dataset.removeExistingArtistImageIndex || -1);
+            const existingImages = parseInlineArray(row.dataset.existingImages);
+            const existingPaths = parseInlineArray(row.dataset.existingImagePaths);
+            const removedPath = existingPaths[index] || "";
+            row.dataset.existingImages = JSON.stringify(existingImages.filter((_, itemIndex) => itemIndex !== index));
+            row.dataset.existingImagePaths = JSON.stringify(existingPaths.filter((_, itemIndex) => itemIndex !== index));
+            if (removedPath) {
+              pendingRemovedArtistImagePaths.set(artistId, [...new Set([...(pendingRemovedArtistImagePaths.get(artistId) || []), removedPath])]);
+            }
+            setInlineArtistPreview(row);
+            return;
+          }
+          const removePendingImage = event.target.closest("[data-remove-pending-artist-image-index]");
+          if (removePendingImage) {
+            const row = event.target.closest("[data-artist-inline-editor]");
+            const artistId = row?.closest("[data-artist-inline-id]")?.dataset.artistInlineId || "";
+            if (!row || !artistId) return;
+            const index = Number(removePendingImage.dataset.removePendingArtistImageIndex || -1);
+            const currentPending = pendingInlineArtistFiles.get(artistId) || [];
+            pendingInlineArtistFiles.set(artistId, currentPending.filter((_, itemIndex) => itemIndex !== index));
+            setInlineArtistPreview(row);
+            return;
           }
           const save = event.target.closest("[data-save-artist-id]");
           if (save) {
@@ -4143,10 +4344,16 @@
               if (!payload.name || !payload.genre || !payload.bio) throw new Error("Artist name, genre, and bio are required.");
               const { error } = await api.from("artists").update(payload).eq("id", artistId);
               if (error) throw error;
+              const removedPaths = pendingRemovedArtistImagePaths.get(artistId) || [];
+              if (removedPaths.length) {
+                const deleteImages = await api.from("artist_images").delete().eq("artist_id", artistId).in("storage_path", removedPaths);
+                if (deleteImages.error) throw deleteImages.error;
+                await removeStorageObjects(api, removedPaths);
+              }
               const uploads = pendingInlineArtistFiles.get(artistId) || [];
               if (uploads.length) {
                 const uploadedPaths = await uploadFiles(api, `artists/${artistId}`, uploads);
-                const existing = ((window.__soundwavState?.artists || []).find((item) => item.id === artistId)?.images || []).length;
+                const existing = parseInlineArray(row.dataset.existingImagePaths).length;
                 const insert = await api.from("artist_images").insert(
                   uploadedPaths.map((storage_path, index) => ({
                     artist_id: artistId,
@@ -4157,6 +4364,7 @@
                 if (insert.error) throw insert.error;
               }
               pendingInlineArtistFiles.delete(artistId);
+              pendingRemovedArtistImagePaths.delete(artistId);
               editingArtistId = "";
               await refreshArtists(api);
               showOwnerWorkspace("artists");
