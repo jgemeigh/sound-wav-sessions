@@ -3037,6 +3037,9 @@
         const affiliates = Array.isArray(window.__soundwavState?.affiliates) && window.__soundwavState.affiliates.length
           ? window.__soundwavState.affiliates
           : (publicCache.affiliates || []);
+        const newsletters = Array.isArray(window.__soundwavState?.newsletters) && window.__soundwavState.newsletters.length
+          ? window.__soundwavState.newsletters
+          : (publicCache.newsletters || []);
         const donations = Array.isArray(window.__soundwavState?.donations) && window.__soundwavState.donations.length
           ? window.__soundwavState.donations
           : ((publicCache.donations && publicCache.donations.length) ? publicCache.donations : (window.__soundwavFallbackDonations || []));
@@ -3076,6 +3079,10 @@
         if (affiliateGrid) {
           affiliateGrid.innerHTML = affiliates.map((item) => '<article class="affiliate-card">' + (item.image ? ('<img class="affiliate-image" src="' + item.image + '" alt="' + (item.name || "Affiliate") + '">') : '') + '<h3>' + (item.name || "") + '</h3><p>' + (item.blurb || "") + '</p><a href="' + (item.url || "#") + '" target="_blank" rel="noreferrer">Visit link</a></article>').join("");
         }
+        const currentNewsletter = newsletters.find((item) => item.is_current) || newsletters[0];
+        if (q("latest-newsletter-subject")) q("latest-newsletter-subject").textContent = currentNewsletter ? (currentNewsletter.subject || "") : "No newsletter saved yet";
+        if (q("latest-newsletter-body")) q("latest-newsletter-body").textContent = currentNewsletter ? (currentNewsletter.body || "") : "Save a newsletter in admin mode and it will appear here.";
+        if (q("latest-newsletter-meta")) q("latest-newsletter-meta").textContent = currentNewsletter ? (currentNewsletter.sent_at ? ('Broadcast ' + formatPublicDate(currentNewsletter.sent_at) + '.') : ('Saved ' + formatPublicDate(currentNewsletter.created_at) + '.')) : "";
         renderPublicDonations(donations);
       };
       const bindPublicArtistThumbs = () => {
