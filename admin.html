@@ -3158,6 +3158,32 @@
           }, 2400));
         });
       };
+      const renderArchiveDetail = (shows, selectedId) => {
+        const archiveGrid = q("archive-grid");
+        const showDetail = q("show-detail");
+        if (archiveGrid) {
+          archiveGrid.querySelectorAll("[data-show-id]").forEach((card) => {
+            card.classList.toggle("is-selected", String(card.dataset.showId || "") === String(selectedId || ""));
+          });
+        }
+        if (!showDetail) return;
+        const selected = shows.find((show) => String(show.id) === String(selectedId || "")) || shows[0];
+        if (!selected) {
+          showDetail.classList.add("hidden");
+          showDetail.classList.add("mobile-collapsed");
+          return;
+        }
+        const hideMobileDetail = window.innerWidth <= 640 && !selectedId;
+        if (hideMobileDetail) {
+          showDetail.classList.add("mobile-collapsed");
+          showDetail.classList.add("hidden");
+          return;
+        }
+        if (window.__soundwavState) window.__soundwavState.selectedShowId = selected.id;
+        showDetail.classList.remove("mobile-collapsed");
+        showDetail.classList.remove("hidden");
+        showDetail.innerHTML = '<div class="detail-layout"><img src="' + (selected.banner || "") + '" alt="' + (selected.title || "Show") + ' banner"><div><p class="eyebrow">' + formatPublicDate(selected.date) + '</p><h3>' + (selected.title || "") + '</h3><p>' + (selected.description || "") + '</p><ul class="meta-list"><li>' + (selected.venue || "") + '</li>' + (selected.address ? ('<li>' + selected.address + '</li>') : '') + (selected.artists || []).map((artist) => '<li>' + artist + '</li>').join("") + '</ul><div class="gallery-grid">' + (selected.gallery || []).map((image) => '<img src="' + image + '" alt="' + (selected.title || "Show") + ' photo">').join("") + '</div><div class="video-grid">' + (selected.videos || []).map((url) => '<a class="social-link" href="' + url + '" target="_blank" rel="noreferrer">Video link</a>').join("") + '</div></div></div>';
+      };
       const renderPublicEntitySections = () => {
         const publicCache = getPublicCache();
         const shows = Array.isArray(window.__soundwavState?.shows) && window.__soundwavState.shows.length
@@ -3177,29 +3203,10 @@
           : ((publicCache.donations && publicCache.donations.length) ? publicCache.donations : (window.__soundwavFallbackDonations || []));
 
         const archiveGrid = q("archive-grid");
-        const showDetail = q("show-detail");
         if (archiveGrid) {
           archiveGrid.innerHTML = shows.map((show) => '<article class="archive-card" data-show-id="' + show.id + '" tabindex="0" role="button" aria-label="Open ' + (show.title || "show") + '"><img src="' + (show.banner || "") + '" alt="' + (show.title || "Show") + ' flyer"><div class="archive-copy"><p class="eyebrow">' + formatPublicDate(show.date) + '</p><h3>' + (show.title || "") + '</h3><p>' + (show.venue || "") + '</p></div></article>').join("");
         }
-        if (showDetail) {
-          const selectedId = window.__soundwavState?.selectedShowId;
-          const selected = shows.find((show) => String(show.id) === String(selectedId || "")) || shows[0];
-          if (!selected) {
-            showDetail.classList.add("hidden");
-            showDetail.classList.add("mobile-collapsed");
-          } else {
-            const hideMobileDetail = window.innerWidth <= 640 && !selectedId;
-            if (hideMobileDetail) {
-              showDetail.classList.add("mobile-collapsed");
-              showDetail.classList.add("hidden");
-            } else {
-              showDetail.classList.remove("mobile-collapsed");
-              showDetail.classList.remove("hidden");
-            }
-            if (window.__soundwavState) window.__soundwavState.selectedShowId = selected.id;
-            showDetail.innerHTML = '<div class="detail-layout"><img src="' + (selected.banner || "") + '" alt="' + (selected.title || "Show") + ' banner"><div><p class="eyebrow">' + formatPublicDate(selected.date) + '</p><h3>' + (selected.title || "") + '</h3><p>' + (selected.description || "") + '</p><ul class="meta-list"><li>' + (selected.venue || "") + '</li>' + (selected.address ? ('<li>' + selected.address + '</li>') : '') + (selected.artists || []).map((artist) => '<li>' + artist + '</li>').join("") + '</ul><div class="gallery-grid">' + (selected.gallery || []).map((image) => '<img src="' + image + '" alt="' + (selected.title || "Show") + ' photo">').join("") + '</div><div class="video-grid">' + (selected.videos || []).map((url) => '<a class="social-link" href="' + url + '" target="_blank" rel="noreferrer">Video link</a>').join("") + '</div></div></div>';
-          }
-        }
+        renderArchiveDetail(shows, window.__soundwavState?.selectedShowId);
 
         const artistGrid = q("artist-grid");
         if (artistGrid) {
@@ -3249,8 +3256,12 @@
         archiveGrid.dataset.selectionBound = "true";
         const selectCard = (card) => {
           if (!card) return;
+          const publicCache = getPublicCache();
+          const shows = Array.isArray(window.__soundwavState?.shows) && window.__soundwavState.shows.length
+            ? window.__soundwavState.shows
+            : (publicCache.shows || []);
           if (window.__soundwavState) window.__soundwavState.selectedShowId = card.dataset.showId;
-          renderPublicEntitySections();
+          renderArchiveDetail(shows, card.dataset.showId);
           const detail = q("show-detail");
           if (detail) {
             detail.classList.remove("mobile-collapsed");
@@ -3261,15 +3272,18 @@
         archiveGrid.addEventListener("click", (event) => {
           const card = event.target.closest("[data-show-id]");
           if (!card) return;
+          event.preventDefault();
+          event.stopImmediatePropagation();
           selectCard(card);
-        });
+        }, true);
         archiveGrid.addEventListener("keydown", (event) => {
           if (event.key !== "Enter" && event.key !== " ") return;
           const card = event.target.closest("[data-show-id]");
           if (!card) return;
           event.preventDefault();
+          event.stopImmediatePropagation();
           selectCard(card);
-        });
+        }, true);
       };
       const getCurrentNewsletterId = () => {
         const newsletters = (window.__soundwavState?.newsletters && window.__soundwavState.newsletters.length)
