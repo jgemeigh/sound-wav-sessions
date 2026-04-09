@@ -487,7 +487,7 @@ function startArtistCarousels() {
 function renderArtists() { q("artist-grid").innerHTML = state.artists.map((artist) => { const images = artistImagesOrPlaceholder(artist.images); return `<article class="artist-card" id="artist-${slugify(artist.name)}" data-artist-images='${JSON.stringify(images).replace(/'/g, "&apos;")}'><img class="artist-main-image" src="${images[0] || ''}" alt="${artist.name}"><div class="artist-copy"><p class="eyebrow">${artist.genre}</p><h3>${artist.name}</h3><p>${artist.bio}</p><div class="artist-thumbs">${images.slice(0, 4).map((image, index) => `<img src="${image}" alt="${artist.name} photo" data-artist-thumb-index="${index}"${index === 0 ? ' class="active"' : ""}>`).join("")}</div><div class="platform-links">${platformLinks(artist.links)}</div></div></article>`; }).join(""); startArtistCarousels(); }
 function renderAffiliates() { q("affiliate-grid").innerHTML = state.affiliates.map((item) => `<article class="affiliate-card"><h3>${item.name}</h3><p>${item.blurb}</p><a href="${item.url}" target="_blank" rel="noreferrer">Visit link</a></article>`).join(""); }
 function renderNewsletters() {
-  const latest = state.newsletters[0];
+  const latest = state.newsletters.find((item) => item?.is_current) || state.newsletters[0];
   if (q("latest-newsletter-subject")) {
     q("latest-newsletter-subject").textContent = latest ? latest.subject : "No newsletter saved yet";
     q("latest-newsletter-body").textContent = latest ? latest.body : "Save a newsletter in admin mode and it will appear here.";
