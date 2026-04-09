@@ -1,0 +1,16 @@
+node_modules/
+.supabase/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local env or scratch files
+*.log
+*.tmp
+*.bak
+
+# Keep SQL migrations/seeds, but ignore accidental local dumps
+*.sqlite
+*.db
