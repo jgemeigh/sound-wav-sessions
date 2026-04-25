@@ -378,6 +378,12 @@ verify_jwt = false
 [functions.gmail-oauth-callback]
 verify_jwt = false
 
+[functions.newsletter-signup]
+verify_jwt = false
+
+[functions.artist-submit]
+verify_jwt = false
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 

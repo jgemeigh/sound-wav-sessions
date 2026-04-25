@@ -9,6 +9,7 @@ const NEWSLETTER_EMAIL_FOOTER = {
   disclaimer: "You are receiving this because you signed up for updates from SOUND.WAV SESSIONS.",
   unsubscribeLabel: "Unsubscribe from these emails"
 };
+const FUNCTION_BASE_URL = window.SUPABASE_URL ? `${window.SUPABASE_URL}/functions/v1` : "";
 
 const fallbackData = {
   siteCopy: {
@@ -226,6 +227,23 @@ function publicUrl(path) {
   if (/^data:/i.test(path) || path.startsWith("http")) return path;
   if (!supabase) return "";
   return supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+}
+async function invokePublicFunction(name, payload) {
+  if (!FUNCTION_BASE_URL || !window.SUPABASE_ANON_KEY) {
+    throw new Error("Public API is not available on this page.");
+  }
+  const response = await fetch(`${FUNCTION_BASE_URL}/${name}`, {
+    method: "POST",
+    headers: {
+      apikey: window.SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${window.SUPABASE_ANON_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload || {}),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data?.error || "Request failed.");
+  return data;
 }
 function artistImagesOrPlaceholder(images) {
   const normalized = Array.isArray(images)
@@ -699,8 +717,37 @@ document.getElementById("back-to-site")?.addEventListener("click", (event) => {
   event.preventDefault();
   closeOwnerMode();
 });
-document.querySelectorAll(".owner-tab").forEach((button) => button.addEventListener("click", () => { state.ownerView = button.dataset.ownerView; renderOwnerPanels(); }));
-document.getElementById("newsletter-form").addEventListener("submit", async (event) => { event.preventDefault(); const formData = new FormData(event.currentTarget); const email = String(formData.get("email")).trim().toLowerCase(); state.subscribers = [{ id: "temp-public-" + crypto.randomUUID(), email, name: formData.get("name"), active: true }, ...state.subscribers.filter((item) => item.email !== email)]; persistOwnerData(); renderSubscribers(); const { error } = await supabase.from("subscribers").upsert({ email, name: formData.get("name"), active: true }, { onConflict: "email" }); if (error) return setMessage("newsletter-message", error.message, "error"); event.currentTarget.reset(); if (state.ownerLoggedIn) await loadOwnerData(); renderSubscribers(); setMessage("newsletter-message", "You are on the SOUND.WAV list.", "success"); });
+document.querySelectorAll(".owner-tab").forEach((button) => button.addEventListener("click", async () => {
+  state.ownerView = button.dataset.ownerView;
+  if (state.ownerLoggedIn && state.ownerAuthMode === "supabase" && (state.ownerView === "newsletter" || state.ownerView === "submissions")) {
+    try {
+      await loadOwnerData();
+    } catch (error) {
+      console.error(error);
+    }
+  }
+  renderOwnerPanels();
+}));
+document.getElementById("newsletter-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const formData = new FormData(event.currentTarget);
+  const email = String(formData.get("email")).trim().toLowerCase();
+  const name = String(formData.get("name") || "").trim();
+  state.subscribers = [{ id: "temp-public-" + crypto.randomUUID(), email, name, active: true }, ...state.subscribers.filter((item) => item.email !== email)];
+  persistOwnerData();
+  renderSubscribers();
+  try {
+    await invokePublicFunction("newsletter-signup", { email, name });
+    event.currentTarget.reset();
+    if (state.ownerLoggedIn) {
+      await loadOwnerData();
+      renderSubscribers();
+    }
+    setMessage("newsletter-message", "You are on the SOUND.WAV list.", "success");
+  } catch (error) {
+    setMessage("newsletter-message", error.message || "Could not join the list.", "error");
+  }
+});
 document.getElementById("optout-form").addEventListener("submit", async (event) => { event.preventDefault(); const email = String(new FormData(event.currentTarget).get("email")).trim().toLowerCase(); state.subscribers = state.subscribers.map((item) => item.email === email ? { ...item, active: false } : item); persistOwnerData(); renderSubscribers(); const { error } = await supabase.from("subscribers").update({ active: false }).eq("email", email); if (error) return setMessage("optout-message", error.message, "error"); event.currentTarget.reset(); if (state.ownerLoggedIn) await loadOwnerData(); renderSubscribers(); setMessage("optout-message", "You have been unsubscribed.", "success"); });
 const artistSubmissionForm = document.getElementById("artist-submission-form");
 const artistSubmissionPhone = artistSubmissionForm?.elements?.phone;
@@ -730,8 +777,8 @@ artistSubmissionForm?.addEventListener("submit", async (event) => {
   persistOwnerData();
   renderSubmissions();
   try {
-    const { data, error } = await supabase.from("artist_submissions").insert(payload).select("*").single();
-    if (error) throw error;
+    const result = await invokePublicFunction("artist-submit", payload);
+    const data = result?.submission;
     state.submissions = [data, ...state.submissions.filter((item) => item.id !== tempId)];
     if (window.__soundwavState) window.__soundwavState.submissions = state.submissions;
     persistOwnerData();
