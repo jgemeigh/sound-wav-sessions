@@ -317,8 +317,11 @@
             <h3>Subscribers</h3>
             <div class="subscriber-sheet-toolbar">
               <button class="mini-button" id="subscriber-add-row" type="button">New row</button>
+              <button class="mini-button ghost" id="subscriber-db-refresh" type="button">Refresh live list</button>
             </div>
             <div id="subscriber-list" class="admin-list compact" data-enhanced-admin="true"></div>
+            <div id="subscriber-db-meta" class="small-note"></div>
+            <div id="subscriber-db-list" class="admin-list compact"></div>
             <p class="form-message" id="subscriber-message" aria-live="polite"></p>
           </section>
         </section>
@@ -3517,8 +3520,19 @@
         const next = (data && data.length) ? data : (window.__soundwavState?.subscribers || []);
         if (window.__soundwavState) window.__soundwavState.subscribers = next;
         setOwnerCache({ subscribers: next });
+        renderSubscriberDbMirror(next);
         if (window.__soundwavRenderAll) window.__soundwavRenderAll();
         renderOwnerDataPanels();
+      };
+      const renderSubscriberDbMirror = (rows) => {
+        const meta = q("subscriber-db-meta");
+        const list = q("subscriber-db-list");
+        if (!meta || !list) return;
+        const next = Array.isArray(rows) ? rows : [];
+        meta.textContent = next.length ? `Live DB rows: ${next.length}` : "Live DB rows: 0";
+        list.innerHTML = next.length
+          ? next.map((item) => '<article class="admin-list-item"><p><strong>' + (item.name || "(No name)") + '</strong></p><p>' + (item.email || "") + '</p><p>' + (item.active ? 'Subscribed' : 'Opted out') + '</p></article>').join("")
+          : '<article class="admin-list-item"><p>No subscriber rows returned from the live database.</p></article>';
       };
       const applySubscriberState = (item, mode) => {
         const current = Array.isArray(window.__soundwavState?.subscribers) ? window.__soundwavState.subscribers : (getOwnerCache().subscribers || []);
@@ -3671,6 +3685,7 @@
             window.__soundwavState.submissions = ownerCache.submissions;
           }
         }
+        renderSubscriberDbMirror(window.__soundwavState?.subscribers || ownerCache.subscribers || []);
         const campaignSave = q("campaign-save");
         if (campaignSave) {
           const clean = campaignSave.cloneNode(true);
@@ -4411,6 +4426,18 @@
         window.addEventListener("soundwav:owner-authenticated", () => {
           hydratePublicEntities();
           hydrateOwnerEntities();
+        });
+        q("subscriber-db-refresh")?.addEventListener("click", async () => {
+          try {
+            const api = client();
+            if (!api) throw new Error("Supabase client unavailable on this page.");
+            await refreshSubscribers(api);
+            showOwnerWorkspace("newsletter");
+            setFormMessage("subscriber-message", "Live subscriber list refreshed.", "success");
+          } catch (error) {
+            console.error(error);
+            setFormMessage("subscriber-message", error.message || "Could not refresh live subscriber list.", "error");
+          }
         });
         window.addEventListener("soundwav:owner-view-selected", (event) => {
           const view = event?.detail?.view;
