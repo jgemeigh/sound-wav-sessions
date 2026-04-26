@@ -544,6 +544,7 @@
             document.querySelectorAll('[data-owner-panel]').forEach((panel) => {
               panel.classList.toggle('hidden', panel.dataset.ownerPanel !== view);
             });
+            window.dispatchEvent(new CustomEvent('soundwav:owner-view-selected', { detail: { view } }));
           });
         });
       });
@@ -4410,6 +4411,15 @@
         window.addEventListener("soundwav:owner-authenticated", () => {
           hydratePublicEntities();
           hydrateOwnerEntities();
+        });
+        window.addEventListener("soundwav:owner-view-selected", (event) => {
+          const view = event?.detail?.view;
+          if (view !== "newsletter" && view !== "submissions") return;
+          hydrateOwnerEntities().then(() => {
+            renderOwnerDataPanels();
+          }).catch((error) => {
+            console.error(error);
+          });
         });
         window.addEventListener("soundwav:show-public-site", () => {
           hydratePublicEntities();
