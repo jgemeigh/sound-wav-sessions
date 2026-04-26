@@ -3834,10 +3834,19 @@
           setOwnerCache({ submissions: window.__soundwavState?.submissions || [{ id: tempId, ...payload, status: "New", created_at: new Date().toISOString() }] });
           renderOwnerDataPanels();
           try {
-            const result = await api.from("artist_submissions").insert(payload).select("*").single();
-            if (result.error) throw result.error;
+            const response = await fetch(`${window.SUPABASE_URL}/functions/v1/artist-submit`, {
+              method: "POST",
+              headers: {
+                apikey: window.SUPABASE_ANON_KEY,
+                Authorization: `Bearer ${window.SUPABASE_ANON_KEY}`,
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify(payload)
+            });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(result?.error || "Could not submit artist info.");
             const currentSubs = window.__soundwavState?.submissions || [];
-            const nextSubs = [result.data, ...currentSubs.filter((item) => item.id !== tempId)];
+            const nextSubs = [result.submission, ...currentSubs.filter((item) => item.id !== tempId)];
             if (window.__soundwavState) window.__soundwavState.submissions = nextSubs;
             setOwnerCache({ submissions: nextSubs });
             renderOwnerDataPanels();
