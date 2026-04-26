@@ -722,6 +722,7 @@ document.querySelectorAll(".owner-tab").forEach((button) => button.addEventListe
   if (state.ownerLoggedIn && state.ownerAuthMode === "supabase" && (state.ownerView === "newsletter" || state.ownerView === "submissions")) {
     try {
       await loadOwnerData();
+      renderAll();
     } catch (error) {
       console.error(error);
     }
@@ -741,6 +742,7 @@ document.getElementById("newsletter-form").addEventListener("submit", async (eve
     event.currentTarget.reset();
     if (state.ownerLoggedIn) {
       await loadOwnerData();
+      renderAll();
       renderSubscribers();
     }
     setMessage("newsletter-message", "You are on the SOUND.WAV list.", "success");
@@ -782,7 +784,10 @@ artistSubmissionForm?.addEventListener("submit", async (event) => {
     state.submissions = [data, ...state.submissions.filter((item) => item.id !== tempId)];
     if (window.__soundwavState) window.__soundwavState.submissions = state.submissions;
     persistOwnerData();
-    if (state.ownerLoggedIn) await loadOwnerData();
+    if (state.ownerLoggedIn) {
+      await loadOwnerData();
+      renderAll();
+    }
     renderSubmissions();
     event.currentTarget.reset();
     setMessage("artist-message", "Submission received. We will hit you back soon.", "success");
