@@ -90,7 +90,7 @@
         <div class="newsletter-panels">
           <form id="newsletter-form" class="stack-form">
             <label>Email address<input type="email" name="email" required></label>
-            <label>Name<input type="text" name="name" required></label>
+            <label>Name (optional)<input type="text" name="name"></label>
             <button class="button" type="submit">Join the list</button>
             <p class="form-message" id="newsletter-message" aria-live="polite"></p>
           </form>
@@ -317,11 +317,8 @@
             <h3>Subscribers</h3>
             <div class="subscriber-sheet-toolbar">
               <button class="mini-button" id="subscriber-add-row" type="button">New row</button>
-              <button class="mini-button ghost" id="subscriber-db-refresh" type="button">Refresh live list</button>
             </div>
             <div id="subscriber-list" class="admin-list compact" data-enhanced-admin="true"></div>
-            <div id="subscriber-db-meta" class="small-note"></div>
-            <div id="subscriber-db-list" class="admin-list compact"></div>
             <p class="form-message" id="subscriber-message" aria-live="polite"></p>
           </section>
         </section>
@@ -554,8 +551,8 @@
     })();
   </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js?v=20260425c"></script>
-  <script src="app.js?v=20260425c"></script>
+  <script src="config.js?v=20260427a"></script>
+  <script src="app.js?v=20260427a"></script>
   <script id="soundwav-upcoming-manager">
     (() => {
       return;

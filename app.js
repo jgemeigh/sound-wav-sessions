@@ -734,7 +734,9 @@ document.getElementById("newsletter-form").addEventListener("submit", async (eve
   const formData = new FormData(event.currentTarget);
   const email = String(formData.get("email")).trim().toLowerCase();
   const name = String(formData.get("name") || "").trim();
-  state.subscribers = [{ id: "temp-public-" + crypto.randomUUID(), email, name, active: true }, ...state.subscribers.filter((item) => item.email !== email)];
+  const fallbackName = email.includes("@") ? email.split("@")[0] : "Subscriber";
+  const displayName = name || fallbackName;
+  state.subscribers = [{ id: "temp-public-" + crypto.randomUUID(), email, name: displayName, active: true }, ...state.subscribers.filter((item) => item.email !== email)];
   persistOwnerData();
   renderSubscribers();
   try {

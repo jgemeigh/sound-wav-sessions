@@ -36,10 +36,11 @@ serve(async (request) => {
 
     const body = await request.json().catch(() => ({}));
     const email = String(body?.email || "").trim().toLowerCase();
-    const name = String(body?.name || "").trim();
+    const rawName = String(body?.name || "").trim();
+    const fallbackName = email.includes("@") ? email.split("@")[0] : "Subscriber";
+    const name = rawName || fallbackName;
 
     if (!email) return json({ error: "Email is required." }, { status: 400 });
-    if (!name) return json({ error: "Name is required." }, { status: 400 });
 
     const admin = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false, autoRefreshToken: false },
@@ -47,7 +48,8 @@ serve(async (request) => {
 
     let result = await admin.from("subscribers").insert({ email, name, active: true });
     if (result.error && (result.error.code === "23505" || /duplicate key/i.test(result.error.message || ""))) {
-      result = await admin.from("subscribers").update({ name, active: true }).eq("email", email);
+      const updatePayload = rawName ? { name: rawName, active: true } : { active: true };
+      result = await admin.from("subscribers").update(updatePayload).eq("email", email);
     }
     if (result.error) {
       return json({ error: result.error.message || "Could not save subscriber." }, { status: 400 });
