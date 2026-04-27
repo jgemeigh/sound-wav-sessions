@@ -3596,8 +3596,8 @@
         const artists = (window.__soundwavState?.artists && window.__soundwavState.artists.length) ? window.__soundwavState.artists : (publicCache.artists || []);
         const affiliates = (window.__soundwavState?.affiliates && window.__soundwavState.affiliates.length) ? window.__soundwavState.affiliates : (publicCache.affiliates || []);
         const donations = (window.__soundwavState?.donations && window.__soundwavState.donations.length) ? window.__soundwavState.donations : (publicCache.donations || []);
-        const subscribers = (window.__soundwavState?.subscribers && window.__soundwavState.subscribers.length) ? window.__soundwavState.subscribers : (ownerCache.subscribers || []);
-        const submissions = (window.__soundwavState?.submissions && window.__soundwavState.submissions.length) ? window.__soundwavState.submissions : (ownerCache.submissions || []);
+        const subscribers = (ownerCache.subscribers && ownerCache.subscribers.length) ? ownerCache.subscribers : ((window.__soundwavState?.subscribers && window.__soundwavState.subscribers.length) ? window.__soundwavState.subscribers : []);
+        const submissions = (ownerCache.submissions && ownerCache.submissions.length) ? ownerCache.submissions : ((window.__soundwavState?.submissions && window.__soundwavState.submissions.length) ? window.__soundwavState.submissions : []);
         const currentNewsletter = newsletters.find((item) => item.is_current) || newsletters[0];
         const currentNewsletterNode = q("current-newsletter-admin");
         if (currentNewsletterNode) {
