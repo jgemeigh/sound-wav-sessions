@@ -4513,6 +4513,51 @@
         }, { passive: true });
       };
       document.addEventListener("DOMContentLoaded", () => {
+        const newsletterForm = document.getElementById("newsletter-form");
+        if (newsletterForm) {
+          const directForm = newsletterForm.cloneNode(true);
+          newsletterForm.replaceWith(directForm);
+          const newsletterMessage = document.getElementById("newsletter-message");
+          const setNewsletterFormMessage = (text, tone) => {
+            if (!newsletterMessage) return;
+            newsletterMessage.textContent = text || "";
+            newsletterMessage.className = "form-message" + (tone ? (" " + tone) : "");
+          };
+          directForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const formData = new FormData(directForm);
+            const email = String(formData.get("email") || "").trim().toLowerCase();
+            const name = String(formData.get("name") || "").trim();
+            if (!email) {
+              setNewsletterFormMessage("Email is required.", "error");
+              return;
+            }
+            if (!window.FUNCTION_BASE_URL || !window.SUPABASE_ANON_KEY) {
+              setNewsletterFormMessage("Newsletter signup is not configured on this page.", "error");
+              return;
+            }
+            setNewsletterFormMessage("Joining the SOUND.WAV list...", "success");
+            try {
+              const response = await fetch(window.FUNCTION_BASE_URL + "/newsletter-signup", {
+                method: "POST",
+                headers: {
+                  apikey: window.SUPABASE_ANON_KEY,
+                  Authorization: "Bearer " + window.SUPABASE_ANON_KEY,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ email, name }),
+              });
+              const payload = await response.json().catch(() => ({}));
+              if (!response.ok) {
+                throw new Error(payload?.error || "Could not join the list.");
+              }
+              directForm.reset();
+              setNewsletterFormMessage("You are on the SOUND.WAV list.", "success");
+            } catch (error) {
+              setNewsletterFormMessage(error?.message || "Could not join the list.", "error");
+            }
+          });
+        }
         q("artists-prev")?.addEventListener("click", () => moveCarousel("artist-grid", -1));
         q("artists-next")?.addEventListener("click", () => moveCarousel("artist-grid", 1));
         q("archive-prev")?.addEventListener("click", () => moveCarousel("archive-grid", -1));
