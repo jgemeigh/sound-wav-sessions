@@ -4737,6 +4737,7 @@
           const directForm = newsletterForm.cloneNode(true);
           newsletterForm.replaceWith(directForm);
           const newsletterMessage = document.getElementById("newsletter-message");
+          const functionBaseUrl = window.FUNCTION_BASE_URL || (window.SUPABASE_URL ? String(window.SUPABASE_URL).replace(/\/$/, "") + "/functions/v1" : "");
           const setNewsletterFormMessage = (text, tone) => {
             if (!newsletterMessage) return;
             newsletterMessage.textContent = text || "";
@@ -4751,13 +4752,13 @@
               setNewsletterFormMessage("Email is required.", "error");
               return;
             }
-            if (!window.FUNCTION_BASE_URL || !window.SUPABASE_ANON_KEY) {
+            if (!functionBaseUrl || !window.SUPABASE_ANON_KEY) {
               setNewsletterFormMessage("Newsletter signup is not configured on this page.", "error");
               return;
             }
             setNewsletterFormMessage("Joining the SOUND.WAV list...", "success");
             try {
-              const response = await fetch(window.FUNCTION_BASE_URL + "/newsletter-signup", {
+              const response = await fetch(functionBaseUrl + "/newsletter-signup", {
                 method: "POST",
                 headers: {
                   apikey: window.SUPABASE_ANON_KEY,
