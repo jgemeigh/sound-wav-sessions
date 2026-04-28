@@ -317,6 +317,7 @@
             <h3>Subscribers</h3>
             <div class="subscriber-sheet-toolbar">
               <button class="mini-button" id="subscriber-add-row" type="button">New row</button>
+              <button class="mini-button ghost" id="subscriber-db-refresh" type="button">Refresh live list</button>
             </div>
             <div id="subscriber-list" class="admin-list compact" data-enhanced-admin="true"></div>
             <p class="form-message" id="subscriber-message" aria-live="polite"></p>
@@ -3694,25 +3695,21 @@
         if (window.__soundwavRenderAll) window.__soundwavRenderAll();
         renderOwnerDataPanels();
       };
+      const sortSubscribers = (items) => {
+        return [...(items || [])].sort((left, right) => {
+          const leftTime = new Date(left.created_at || 0).getTime();
+          const rightTime = new Date(right.created_at || 0).getTime();
+          return rightTime - leftTime;
+        });
+      };
       const refreshSubscribers = async (api) => {
-        const { data, error } = await api.from("subscribers").select("*").order("email");
+        const { data, error } = await api.from("subscribers").select("*").order("created_at", { ascending: false });
         if (error) throw error;
-        const next = (data && data.length) ? data : (window.__soundwavState?.subscribers || []);
+        const next = sortSubscribers(Array.isArray(data) ? data : []);
         if (window.__soundwavState) window.__soundwavState.subscribers = next;
         setOwnerCache({ subscribers: next });
-        renderSubscriberDbMirror(next);
         if (window.__soundwavRenderAll) window.__soundwavRenderAll();
         renderOwnerDataPanels();
-      };
-      const renderSubscriberDbMirror = (rows) => {
-        const meta = q("subscriber-db-meta");
-        const list = q("subscriber-db-list");
-        if (!meta || !list) return;
-        const next = Array.isArray(rows) ? rows : [];
-        meta.textContent = next.length ? `Live DB rows: ${next.length}` : "Live DB rows: 0";
-        list.innerHTML = next.length
-          ? next.map((item) => '<article class="admin-list-item"><p><strong>' + (item.name || "(No name)") + '</strong></p><p>' + (item.email || "") + '</p><p>' + (item.active ? 'Subscribed' : 'Opted out') + '</p></article>').join("")
-          : '<article class="admin-list-item"><p>No subscriber rows returned from the live database.</p></article>';
       };
       const applySubscriberState = (item, mode) => {
         const current = Array.isArray(window.__soundwavState?.subscribers) ? window.__soundwavState.subscribers : (getOwnerCache().subscribers || []);
@@ -3776,7 +3773,7 @@
         const artists = (window.__soundwavState?.artists && window.__soundwavState.artists.length) ? window.__soundwavState.artists : (publicCache.artists || []);
         const affiliates = (window.__soundwavState?.affiliates && window.__soundwavState.affiliates.length) ? window.__soundwavState.affiliates : (publicCache.affiliates || []);
         const donations = (window.__soundwavState?.donations && window.__soundwavState.donations.length) ? window.__soundwavState.donations : (publicCache.donations || []);
-        const subscribers = (ownerCache.subscribers && ownerCache.subscribers.length) ? ownerCache.subscribers : ((window.__soundwavState?.subscribers && window.__soundwavState.subscribers.length) ? window.__soundwavState.subscribers : []);
+        const subscribers = Array.isArray(ownerCache.subscribers) ? sortSubscribers(ownerCache.subscribers) : [];
         const submissions = (ownerCache.submissions && ownerCache.submissions.length) ? ownerCache.submissions : ((window.__soundwavState?.submissions && window.__soundwavState.submissions.length) ? window.__soundwavState.submissions : []);
         const currentNewsletter = newsletters.find((item) => item.is_current) || newsletters[0];
         const currentNewsletterNode = q("current-newsletter-admin");
@@ -3805,7 +3802,8 @@
                 const isEditing = isTemp || editingSubscriberIds.has(String(item.id || ""));
                 const locked = isEditing ? "" : " disabled";
                 const rowMode = isEditing ? "edit" : "view";
-                return '<div class="subscriber-sheet-row" data-subscriber-row-id="' + (item.id || "") + '" data-subscriber-row-mode="' + rowMode + '"><input type="text" data-subscriber-name value="' + ((item.name || "").replace(/"/g, '&quot;')) + '" placeholder="Name"' + locked + '><input type="email" data-subscriber-email value="' + ((item.email || "").replace(/"/g, '&quot;')) + '" placeholder="Email"' + locked + '><select data-subscriber-active' + locked + '><option value="true"' + (item.active ? ' selected' : '') + '>Subscribed</option><option value="false"' + (!item.active ? ' selected' : '') + '>Opted out</option></select><div class="list-actions">' + (isEditing ? ('<button class="mini-button" type="button" data-save-subscriber-id="' + (item.id || "") + '">Save</button>') : ('<button class="mini-button" type="button" data-edit-subscriber-id="' + (item.id || "") + '">Edit</button>')) + '<button class="mini-button danger" type="button" data-delete-subscriber-id="' + (item.id || "") + '">Remove</button></div></div>';
+                const joinedLabel = item.created_at ? new Date(item.created_at).toLocaleString() : "Unknown";
+                return '<div class="subscriber-sheet-row" data-subscriber-row-id="' + (item.id || "") + '" data-subscriber-row-mode="' + rowMode + '"><div class="subscriber-sheet-cell"><input type="text" data-subscriber-name value="' + ((item.name || "").replace(/"/g, '&quot;')) + '" placeholder="Name"' + locked + '><small>Joined ' + joinedLabel + '</small></div><input type="email" data-subscriber-email value="' + ((item.email || "").replace(/"/g, '&quot;')) + '" placeholder="Email"' + locked + '><select data-subscriber-active' + locked + '><option value="true"' + (item.active ? ' selected' : '') + '>Subscribed</option><option value="false"' + (!item.active ? ' selected' : '') + '>Opted out</option></select><div class="list-actions">' + (isEditing ? ('<button class="mini-button" type="button" data-save-subscriber-id="' + (item.id || "") + '">Save</button>') : ('<button class="mini-button" type="button" data-edit-subscriber-id="' + (item.id || "") + '">Edit</button>')) + '<button class="mini-button danger" type="button" data-delete-subscriber-id="' + (item.id || "") + '">Remove</button></div></div>';
               }).join("") + '</div>'
             : '<article class="admin-list-item"><p>No subscribers yet.</p></article>';
         }
@@ -3865,7 +3863,6 @@
             window.__soundwavState.submissions = ownerCache.submissions;
           }
         }
-        renderSubscriberDbMirror(window.__soundwavState?.subscribers || ownerCache.subscribers || []);
         const campaignSave = q("campaign-save");
         if (campaignSave) {
           const clean = campaignSave.cloneNode(true);
