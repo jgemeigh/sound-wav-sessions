@@ -269,10 +269,7 @@ function persistPublicState() {
 }
 function persistOwnerData() {
   try {
-    localStorage.setItem(OWNER_DATA_CACHE_KEY, JSON.stringify({
-      subscribers: state.subscribers,
-      submissions: state.submissions
-    }));
+    localStorage.removeItem(OWNER_DATA_CACHE_KEY);
   } catch (error) {
     console.error(error);
   }
@@ -380,7 +377,7 @@ async function loadPublicData() {
 }
 async function loadOwnerData() {
   const [subscribersRes, submissionsRes] = await Promise.all([
-    supabase.from("subscribers").select("*").order("email"),
+    supabase.from("subscribers").select("*").order("created_at", { ascending: false }),
     supabase.from("artist_submissions").select("*").order("created_at", { ascending: false })
   ]);
   if (subscribersRes.error) throw subscribersRes.error;
@@ -514,7 +511,7 @@ function renderNewsletters() {
   if (!isEnhancedAdminRegion("campaign-log") && q("campaign-log")) q("campaign-log").innerHTML = state.newsletters.map((item, index) => `<article class="admin-list-item"><p><strong>${item.subject}</strong></p><p>${item.body}</p><p>${item.sent_at ? `Broadcast ${formatDate(item.sent_at)} to ${item.recipients_count} subscribers.` : "Saved draft."}</p><div class="list-actions"><button class="mini-button" type="button" data-edit-newsletter-id="${item.id}">Edit</button>${index === 0 ? `<button class="mini-button ghost" type="button" data-broadcast-newsletter-id="${item.id}">${item.sent_at ? "Broadcast again" : "Broadcast"}</button>` : ""}<button class="mini-button danger" type="button" data-delete-newsletter-id="${item.id}">Delete</button></div></article>`).join("");
 }
 function renderSubscribers() { if (!isEnhancedAdminRegion("subscriber-list") && q("subscriber-list")) q("subscriber-list").innerHTML = state.subscribers.map((item) => `<article class="admin-list-item"><p><strong>${item.name}</strong></p><p>${item.email}</p><p>${item.active ? "Subscribed" : "Opted out"}</p><div class="list-actions"><button class="mini-button danger" type="button" data-delete-subscriber-id="${item.id}">Remove</button></div></article>`).join(""); }
-function renderSubmissions() { if (q("submission-list")) q("submission-list").innerHTML = state.submissions.map((item) => `<article class="admin-list-item"><p><strong>${item.name}</strong> <span class="eyebrow">${item.status}</span></p><p>${item.genre} / ${item.city}</p><p>${item.email} / ${item.phone}</p><p>${item.links || "No links provided"}</p><p>${item.pitch}</p><div class="list-actions"><button class="mini-button" type="button" data-submission-id="${item.id}" data-status="Reviewed">Mark reviewed</button><button class="mini-button ghost" type="button" data-submission-id="${item.id}" data-status="Booked">Mark booked</button><button class="mini-button danger" type="button" data-delete-submission-id="${item.id}">Delete</button></div></article>`).join(""); }
+function renderSubmissions() { if (!isEnhancedAdminRegion("submission-list") && q("submission-list")) q("submission-list").innerHTML = state.submissions.map((item) => `<article class="admin-list-item"><p><strong>${item.name}</strong> <span class="eyebrow">${item.status}</span></p><p>${item.genre} / ${item.city}</p><p>${item.email} / ${item.phone}</p><p>${item.links || "No links provided"}</p><p>${item.pitch}</p><div class="list-actions"><button class="mini-button" type="button" data-submission-id="${item.id}" data-status="Reviewed">Mark reviewed</button><button class="mini-button ghost" type="button" data-submission-id="${item.id}" data-status="Booked">Mark booked</button><button class="mini-button danger" type="button" data-delete-submission-id="${item.id}">Delete</button></div></article>`).join(""); }
 function renderOwnerLists() {
   if (!isEnhancedAdminRegion("artist-admin-list")) {
     q("artist-admin-list").innerHTML = state.artists.map((item) => `<article class="admin-list-item"><p><strong>${item.name}</strong></p><p>${item.genre}</p><div class="list-actions"><button class="mini-button" type="button" data-edit-artist-id="${item.id}">Edit</button><button class="mini-button danger" type="button" data-delete-artist-id="${item.id}">Delete</button></div></article>`).join("");
@@ -585,10 +582,7 @@ async function refreshPublicState(renderSelectedShowId = null) {
 }
 function loadCachedOwnerData() {
   try {
-    const cached = JSON.parse(localStorage.getItem(OWNER_DATA_CACHE_KEY) || "null");
-    if (!cached) return;
-    if (Array.isArray(cached.subscribers)) state.subscribers = cached.subscribers;
-    if (Array.isArray(cached.submissions)) state.submissions = cached.submissions;
+    localStorage.removeItem(OWNER_DATA_CACHE_KEY);
   } catch (error) {
     console.error(error);
   }
@@ -734,11 +728,6 @@ document.getElementById("newsletter-form").addEventListener("submit", async (eve
   const formData = new FormData(event.currentTarget);
   const email = String(formData.get("email")).trim().toLowerCase();
   const name = String(formData.get("name") || "").trim();
-  const fallbackName = email.includes("@") ? email.split("@")[0] : "Subscriber";
-  const displayName = name || fallbackName;
-  state.subscribers = [{ id: "temp-public-" + crypto.randomUUID(), email, name: displayName, active: true }, ...state.subscribers.filter((item) => item.email !== email)];
-  persistOwnerData();
-  renderSubscribers();
   try {
     await invokePublicFunction("newsletter-signup", { email, name });
     event.currentTarget.reset();
