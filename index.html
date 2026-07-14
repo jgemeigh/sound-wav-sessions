@@ -3313,6 +3313,17 @@
         if (data?.error) throw new Error(data.error);
         return data;
       };
+      const startGmailReconnect = () => {
+        const reconnectUrl = `${window.SUPABASE_URL}/functions/v1/gmail-oauth-callback`;
+        window.open(reconnectUrl, "_blank", "noopener,noreferrer");
+        setNewsletterMessage("Complete the Google permission flow in the new tab, then paste the new refresh token back here.", "");
+      };
+      window.__soundwavStartGmailReconnect = (event) => {
+        event?.preventDefault?.();
+        event?.stopPropagation?.();
+        startGmailReconnect();
+        return false;
+      };
       window.__soundwavNewsletterBroadcast = async (newsletterId, mode) => {
         try {
           const api = client();
@@ -3354,6 +3365,13 @@
           event.preventDefault();
           event.stopPropagation();
           window.__soundwavNewsletterBroadcast?.(testBroadcastButton.dataset.testBroadcastNewsletterId, "test");
+          return;
+        }
+        const reconnectGmailButton = event.target.closest("[data-reconnect-gmail]");
+        if (reconnectGmailButton) {
+          event.preventDefault();
+          event.stopPropagation();
+          startGmailReconnect();
         }
       }, true);
       const refreshDonations = async (api) => {
@@ -3606,8 +3624,8 @@
                   ? ('Last broadcast ' + new Date(item.sent_at).toLocaleDateString() + ' to ' + item.recipients_count + ' subscribers.')
                   : 'Not broadcast yet.';
                 return editingNewsletterId === item.id
-                  ? '<article class="admin-list-item" data-newsletter-inline-id="' + item.id + '"><div class="inline-editor"><label>Subject<input type="text" data-newsletter-subject value="' + ((item.subject || "").replace(/"/g, '&quot;')) + '"></label><label>Message<textarea rows="6" data-newsletter-body>' + (item.body || "") + '</textarea></label><p>' + broadcastCopy + '</p><div class="list-actions"><button class="mini-button" type="button" data-save-newsletter-id="' + item.id + '">Save</button><button class="mini-button ghost" type="button" data-cancel-newsletter-id="' + item.id + '">Cancel</button>' + (isCurrent ? '<button class="mini-button ghost" type="button" data-broadcast-newsletter-id="' + item.id + '" onclick="return window.__soundwavNewsletterBroadcastClick(event, \'' + item.id + '\', \'live\');">' + (item.sent_at ? 'Broadcast again' : 'Broadcast') + '</button><button class="mini-button ghost" type="button" data-test-broadcast-newsletter-id="' + item.id + '" onclick="return window.__soundwavNewsletterBroadcastClick(event, \'' + item.id + '\', \'test\');">Test broadcast</button>' : '<button class="mini-button ghost" type="button" data-set-current-newsletter-id="' + item.id + '">Set current</button>') + '<button class="mini-button danger" type="button" data-delete-newsletter-id="' + item.id + '">Delete</button></div></div></article>'
-                  : '<article class="admin-list-item"><p><strong>' + item.subject + '</strong>' + (isCurrent ? ' <span class="current-tag">Current</span>' : '') + '</p><p>' + item.body + '</p><p>' + broadcastCopy + '</p><div class="list-actions"><button class="mini-button" type="button" data-edit-newsletter-id="' + item.id + '">Edit</button>' + (isCurrent ? '<button class="mini-button ghost" type="button" data-broadcast-newsletter-id="' + item.id + '" onclick="return window.__soundwavNewsletterBroadcastClick(event, \'' + item.id + '\', \'live\');">' + (item.sent_at ? 'Broadcast again' : 'Broadcast') + '</button><button class="mini-button ghost" type="button" data-test-broadcast-newsletter-id="' + item.id + '" onclick="return window.__soundwavNewsletterBroadcastClick(event, \'' + item.id + '\', \'test\');">Test broadcast</button>' : '<button class="mini-button ghost" type="button" data-set-current-newsletter-id="' + item.id + '">Set current</button>') + '<button class="mini-button danger" type="button" data-delete-newsletter-id="' + item.id + '">Delete</button></div></article>';
+                  ? '<article class="admin-list-item" data-newsletter-inline-id="' + item.id + '"><div class="inline-editor"><label>Subject<input type="text" data-newsletter-subject value="' + ((item.subject || "").replace(/"/g, '&quot;')) + '"></label><label>Message<textarea rows="6" data-newsletter-body>' + (item.body || "") + '</textarea></label><p>' + broadcastCopy + '</p><div class="list-actions"><button class="mini-button" type="button" data-save-newsletter-id="' + item.id + '">Save</button><button class="mini-button ghost" type="button" data-cancel-newsletter-id="' + item.id + '">Cancel</button>' + (isCurrent ? '<button class="mini-button ghost" type="button" data-broadcast-newsletter-id="' + item.id + '" onclick="return window.__soundwavNewsletterBroadcastClick(event, \'' + item.id + '\', \'live\');">' + (item.sent_at ? 'Broadcast again' : 'Broadcast') + '</button><button class="mini-button ghost" type="button" data-test-broadcast-newsletter-id="' + item.id + '" onclick="return window.__soundwavNewsletterBroadcastClick(event, \'' + item.id + '\', \'test\');">Test broadcast</button><button class="mini-button ghost" type="button" data-reconnect-gmail onclick="return window.__soundwavStartGmailReconnect(event);">Reconnect Gmail</button>' : '<button class="mini-button ghost" type="button" data-set-current-newsletter-id="' + item.id + '">Set current</button>') + '<button class="mini-button danger" type="button" data-delete-newsletter-id="' + item.id + '">Delete</button></div></div></article>'
+                  : '<article class="admin-list-item"><p><strong>' + item.subject + '</strong>' + (isCurrent ? ' <span class="current-tag">Current</span>' : '') + '</p><p>' + item.body + '</p><p>' + broadcastCopy + '</p><div class="list-actions"><button class="mini-button" type="button" data-edit-newsletter-id="' + item.id + '">Edit</button>' + (isCurrent ? '<button class="mini-button ghost" type="button" data-broadcast-newsletter-id="' + item.id + '" onclick="return window.__soundwavNewsletterBroadcastClick(event, \'' + item.id + '\', \'live\');">' + (item.sent_at ? 'Broadcast again' : 'Broadcast') + '</button><button class="mini-button ghost" type="button" data-test-broadcast-newsletter-id="' + item.id + '" onclick="return window.__soundwavNewsletterBroadcastClick(event, \'' + item.id + '\', \'test\');">Test broadcast</button><button class="mini-button ghost" type="button" data-reconnect-gmail onclick="return window.__soundwavStartGmailReconnect(event);">Reconnect Gmail</button>' : '<button class="mini-button ghost" type="button" data-set-current-newsletter-id="' + item.id + '">Set current</button>') + '<button class="mini-button danger" type="button" data-delete-newsletter-id="' + item.id + '">Delete</button></div></article>';
               }).join("")
             : '<article class="admin-list-item"><p>No newsletters saved yet.</p></article>';
         }

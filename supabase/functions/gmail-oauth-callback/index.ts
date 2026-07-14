@@ -8,6 +8,7 @@ const corsHeaders = {
 
 const GOOGLE_REDIRECT_URI =
   "https://dafqbhphoeblxpfrizwx.supabase.co/functions/v1/gmail-oauth-callback";
+const GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.send";
 
 function html(body: string, status = 200) {
   return new Response(
@@ -81,6 +82,19 @@ serve(async (request) => {
     const url = new URL(request.url);
     const code = url.searchParams.get("code") || "";
     const error = url.searchParams.get("error") || "";
+    const shouldStartOauth = !code && !error;
+
+    if (shouldStartOauth) {
+      const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+      authUrl.searchParams.set("client_id", clientId);
+      authUrl.searchParams.set("redirect_uri", GOOGLE_REDIRECT_URI);
+      authUrl.searchParams.set("response_type", "code");
+      authUrl.searchParams.set("scope", GMAIL_SCOPE);
+      authUrl.searchParams.set("access_type", "offline");
+      authUrl.searchParams.set("prompt", "consent");
+
+      return Response.redirect(authUrl.toString(), 302);
+    }
 
     if (error) {
       return html(`<h1 class="error">Google OAuth failed</h1><p>${error}</p>`, 400);
