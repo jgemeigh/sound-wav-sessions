@@ -3483,7 +3483,30 @@
         if (data?.error) throw new Error(data.error);
         return data;
       };
-      const startGmailReconnect = () => {
+      const startGmailReconnect = async () => {
+        const statusUrl = `${window.SUPABASE_URL}/functions/v1/gmail-oauth-callback?status=1`;
+        setNewsletterMessage("Checking Gmail connection...", "");
+        try {
+          const response = await fetch(statusUrl, {
+            method: "GET",
+            headers: {
+              apikey: window.SUPABASE_ANON_KEY
+            }
+          });
+          const result = await response.json().catch(() => ({}));
+          if (response.ok && result?.state === "healthy") {
+            setNewsletterMessage("Gmail is already connected and healthy. No reconnect needed.", "success");
+            return;
+          }
+          if (result?.state && !["missing_refresh_token", "missing_client", "revoked"].includes(result.state)) {
+            setNewsletterMessage(result?.message || "Could not verify Gmail status.", "error");
+            return;
+          }
+        } catch (error) {
+          console.error(error);
+          setNewsletterMessage("Could not verify Gmail status. Reconnect was not started.", "error");
+          return;
+        }
         const reconnectUrl = `${window.SUPABASE_URL}/functions/v1/gmail-oauth-callback`;
         window.open(reconnectUrl, "_blank", "noopener,noreferrer");
         setNewsletterMessage("Complete the Google permission flow in the new tab, then paste the new refresh token back here.", "");
@@ -3491,7 +3514,7 @@
       window.__soundwavStartGmailReconnect = (event) => {
         event?.preventDefault?.();
         event?.stopPropagation?.();
-        startGmailReconnect();
+        void startGmailReconnect();
         return false;
       };
       window.__soundwavNewsletterBroadcast = async (newsletterId, mode) => {
@@ -3541,7 +3564,7 @@
         if (reconnectGmailButton) {
           event.preventDefault();
           event.stopPropagation();
-          startGmailReconnect();
+          void startGmailReconnect();
         }
       }, true);
       const refreshDonations = async (api) => {

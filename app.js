@@ -418,11 +418,34 @@ function renderSiteCopy() {
 function slugify(value) {
   return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
+function findArtistMatchByName(name) {
+  const normalized = String(name || "").trim().toLowerCase();
+  if (!normalized) return null;
+  return state.artists.find((entry) => String(entry.name || "").trim().toLowerCase() === normalized) || null;
+}
+function renderArtistJumpLink(label) {
+  const match = findArtistMatchByName(label);
+  if (!match) return `<span class="social-link">${label}</span>`;
+  return `<a class="social-link" href="#artists" data-artist-jump="${match.name}">${label}</a>`;
+}
+function renderArtistMetaListItems(artists) {
+  return (artists || []).map((artist) => `<li>${renderArtistJumpLink(artist)}</li>`).join("");
+}
+function selectArtistCardByName(name) {
+  const match = findArtistMatchByName(name);
+  if (!match) return;
+  const artistGrid = q("artist-grid");
+  const cardId = `artist-${slugify(match.name)}`;
+  const card = q(cardId);
+  if (!artistGrid || !card) return;
+  artistGrid.querySelectorAll(".artist-card").forEach((node) => {
+    node.classList.toggle("is-selected", node === card);
+  });
+  card.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" });
+}
 function renderUpcomingArtistLinks(artists) {
   return (artists || []).map((artist) => {
-    const match = state.artists.find((entry) => String(entry.name || "").trim().toLowerCase() === String(artist || "").trim().toLowerCase());
-    if (match) return `<a class="social-link" href="#artist-${slugify(match.name)}">${artist}</a>`;
-    return `<span class="social-link">${artist}</span>`;
+    return renderArtistJumpLink(artist);
   }).join("");
 }
 function renderUpcomingShow() {
@@ -460,9 +483,17 @@ function renderArchive() {
     return;
   }
   state.selectedShowId = selected.id;
+  q("archive-grid")?.querySelectorAll("[data-show-id]").forEach((card) => {
+    card.classList.toggle("is-selected", String(card.dataset.showId || "") === String(selected.id || ""));
+  });
   detail.classList.remove("mobile-collapsed");
   detail.classList.remove("hidden");
-  detail.innerHTML = `<div class="detail-layout"><img src="${selected.banner || ''}" alt="${selected.title} banner"><div><p class="eyebrow">${formatDate(selected.date)}</p><h3>${selected.title}</h3><p>${selected.description}</p><ul class="meta-list"><li>${selected.venue}</li>${selected.address ? `<li>${selected.address}</li>` : ""}${selected.artists.map((artist) => `<li>${artist}</li>`).join("")}</ul><div class="gallery-grid">${selected.gallery.map((image) => `<img src="${image}" alt="${selected.title} photo">`).join("")}</div><div class="video-grid">${selected.videos.map((url) => `<a class="social-link" href="${url}" target="_blank" rel="noreferrer">Video link</a>`).join("")}</div></div></div>`;
+  const bannerUrl = String(selected.banner || "").trim();
+  const galleryImages = (selected.gallery || []).filter((image, index, items) => {
+    const normalized = String(image || "").trim();
+    return normalized && normalized !== bannerUrl && items.findIndex((entry) => String(entry || "").trim() === normalized) === index;
+  });
+  detail.innerHTML = `<div class="detail-layout"><img src="${selected.banner || ''}" alt="${selected.title} banner"><div><p class="eyebrow">${formatDate(selected.date)}</p><h3>${selected.title}</h3><p>${selected.description}</p><ul class="meta-list"><li>${selected.venue}</li>${selected.address ? `<li>${selected.address}</li>` : ""}${renderArtistMetaListItems(selected.artists || [])}</ul>${galleryImages.length ? `<div class="gallery-grid">${galleryImages.map((image) => `<img src="${image}" alt="${selected.title} photo">`).join("")}</div>` : ""}<div class="video-grid">${selected.videos.map((url) => `<a class="social-link" href="${url}" target="_blank" rel="noreferrer">Video link</a>`).join("")}</div></div></div>`;
 }
 function platformLinks(links) {
   const defs = [["instagram", "IG"], ["spotify", "SP"], ["soundcloud", "SC"], ["bandcamp", "BC"], ["website", "SITE"], ["linktree", "LT"]];
@@ -866,6 +897,14 @@ if (!isEnhancedAdminForm("affiliate-form")) document.getElementById("affiliate-f
 document.getElementById("clear-affiliate-form").addEventListener("click", clearAffiliateForm);
 document.getElementById("archive-grid").addEventListener("click", (event) => { const card = event.target.closest("[data-show-id]"); if (!card) return; state.selectedShowId = card.dataset.showId; renderArchive(); q("show-detail").scrollIntoView({ behavior: "smooth", block: "start" }); });
 document.getElementById("archive-grid").addEventListener("keydown", (event) => { if (event.key !== "Enter" && event.key !== " ") return; const card = event.target.closest("[data-show-id]"); if (!card) return; event.preventDefault(); state.selectedShowId = card.dataset.showId; renderArchive(); });
+document.addEventListener("click", (event) => {
+  const trigger = event.target.closest("[data-artist-jump]");
+  if (!trigger) return;
+  event.preventDefault();
+  const artistName = trigger.dataset.artistJump || "";
+  q("artists")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  window.setTimeout(() => selectArtistCardByName(artistName), 180);
+});
 if (!isEnhancedAdminRegion("submission-list")) document.getElementById("submission-list").addEventListener("click", async (event) => { const statusButton = event.target.closest("[data-submission-id]"); if (statusButton) { const result = await supabase.from("artist_submissions").update({ status: statusButton.dataset.status }).eq("id", statusButton.dataset.submissionId); if (!result.error) { await loadOwnerData(); renderSubmissions(); } return; } const deleteButton = event.target.closest("[data-delete-submission-id]"); if (!deleteButton) return; const result = await supabase.from("artist_submissions").delete().eq("id", deleteButton.dataset.deleteSubmissionId); if (!result.error) { await loadOwnerData(); renderSubmissions(); } });
 if (!isEnhancedAdminRegion("artist-admin-list")) document.getElementById("artist-admin-list").addEventListener("click", async (event) => { const editButton = event.target.closest("[data-edit-artist-id]"); if (editButton) return loadArtistIntoForm(editButton.dataset.editArtistId); const deleteButton = event.target.closest("[data-delete-artist-id]"); if (!deleteButton) return; const result = await supabase.from("artists").delete().eq("id", deleteButton.dataset.deleteArtistId); if (!result.error) { await loadPublicData(); renderAll(); } });
 if (!isEnhancedAdminRegion("show-admin-list")) document.getElementById("show-admin-list").addEventListener("click", async (event) => { const editButton = event.target.closest("[data-edit-show-id]"); if (editButton) return loadShowIntoForm(editButton.dataset.editShowId); const viewButton = event.target.closest("[data-view-show-id]"); if (viewButton) { state.selectedShowId = viewButton.dataset.viewShowId; renderArchive(); closeOwnerMode(); return q("archive").scrollIntoView({ behavior: "smooth", block: "start" }); } const deleteButton = event.target.closest("[data-delete-show-id]"); if (!deleteButton) return; const result = await supabase.from("shows").delete().eq("id", deleteButton.dataset.deleteShowId); if (!result.error) { await loadPublicData(); renderAll(); } });

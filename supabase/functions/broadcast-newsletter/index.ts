@@ -110,7 +110,12 @@ async function getGmailAccessToken() {
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || !payload?.access_token) {
-    throw new Error(payload?.error_description || payload?.error || "Could not refresh Gmail access token.");
+    const errorCode = String(payload?.error || "").trim();
+    const errorDescription = String(payload?.error_description || "").trim();
+    if (errorCode === "invalid_grant") {
+      throw new Error("Gmail authorization expired or was revoked. Reconnect Gmail OAuth and store a new refresh token.");
+    }
+    throw new Error([errorCode, errorDescription].filter(Boolean).join(": ") || "Could not refresh Gmail access token.");
   }
   return String(payload.access_token);
 }

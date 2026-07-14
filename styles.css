@@ -144,12 +144,17 @@ textarea { resize: vertical; }
   overscroll-behavior-x: contain;
   scroll-snap-type: x proximity;
   scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
   padding-bottom: .35rem;
   scrollbar-width: none;
 }
 .archive-grid::-webkit-scrollbar, .artist-grid::-webkit-scrollbar { display: none; }
-.archive-grid > *, .artist-grid > * { scroll-snap-align: start; }
+.archive-grid > *, .artist-grid > * { scroll-snap-align: start; scroll-snap-stop: always; }
 .archive-card, .artist-card { cursor: pointer; }
+.archive-card.is-selected, .artist-card.is-selected {
+  border-color: rgba(82,214,255,.45);
+  box-shadow: 0 0 0 1px rgba(82,214,255,.18) inset;
+}
 .archive-card img, .artist-main-image { width: 100%; height: 280px; object-fit: cover; display: block; }
 .archive-copy, .artist-copy { padding: 1rem; }
 .artist-thumbs img, .gallery-grid img { width: 68px; height: 68px; object-fit: cover; border-radius: .75rem; border: 1px solid var(--line); }
@@ -206,6 +211,7 @@ textarea { resize: vertical; }
     grid-template-rows: 1fr;
     grid-template-columns: none;
     scroll-snap-type: x mandatory;
+    touch-action: pan-y;
   }
   .show-detail.mobile-collapsed { display: none !important; }
 }

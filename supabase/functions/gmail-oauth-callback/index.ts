@@ -9,6 +9,7 @@ const corsHeaders = {
 const GOOGLE_REDIRECT_URI =
   "https://dafqbhphoeblxpfrizwx.supabase.co/functions/v1/gmail-oauth-callback";
 const GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.send";
+const GMAIL_TOKEN_URL = "https://oauth2.googleapis.com/token";
 
 function html(body: string, status = 200) {
   return new Response(
@@ -67,6 +68,66 @@ function requireEnv(name: string) {
   return value;
 }
 
+async function getGmailStatus() {
+  const clientId = Deno.env.get("GMAIL_CLIENT_ID") || "";
+  const clientSecret = Deno.env.get("GMAIL_CLIENT_SECRET") || "";
+  const refreshToken = Deno.env.get("GMAIL_REFRESH_TOKEN") || "";
+
+  if (!clientId || !clientSecret) {
+    return {
+      ok: false,
+      state: "missing_client",
+      message: "Gmail OAuth client is not configured.",
+    };
+  }
+
+  if (!refreshToken) {
+    return {
+      ok: false,
+      state: "missing_refresh_token",
+      message: "No Gmail refresh token is stored yet.",
+    };
+  }
+
+  const tokenResponse = await fetch(GMAIL_TOKEN_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+      grant_type: "refresh_token",
+    }),
+  });
+  const tokenJson = await tokenResponse.json().catch(() => ({}));
+
+  if (tokenResponse.ok && tokenJson?.access_token) {
+    return {
+      ok: true,
+      state: "healthy",
+      message: "Gmail authorization is healthy.",
+    };
+  }
+
+  const errorCode = String(tokenJson?.error || "").trim();
+  const errorDescription = String(tokenJson?.error_description || "").trim();
+  if (errorCode === "invalid_grant") {
+    return {
+      ok: false,
+      state: "revoked",
+      message: "Stored Gmail authorization expired or was revoked.",
+    };
+  }
+
+  return {
+    ok: false,
+    state: "error",
+    message: [errorCode, errorDescription].filter(Boolean).join(": ") || "Could not validate Gmail authorization.",
+  };
+}
+
 serve(async (request) => {
   if (request.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -82,7 +143,19 @@ serve(async (request) => {
     const url = new URL(request.url);
     const code = url.searchParams.get("code") || "";
     const error = url.searchParams.get("error") || "";
+    const wantsStatus = url.searchParams.get("status") === "1";
     const shouldStartOauth = !code && !error;
+
+    if (wantsStatus) {
+      const status = await getGmailStatus();
+      return new Response(JSON.stringify(status), {
+        status: status.ok ? 200 : 400,
+        headers: {
+          "Content-Type": "application/json; charset=utf-8",
+          ...corsHeaders,
+        },
+      });
+    }
 
     if (shouldStartOauth) {
       const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
