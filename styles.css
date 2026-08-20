@@ -92,7 +92,8 @@ main, .owner-main { padding-bottom: 3rem; }
 .hero-image, .upcoming-image {
   width: 100%;
   height: auto;
-  max-height: min(72vh, 980px);
+  max-height: none;
+  aspect-ratio: auto;
   object-fit: contain;
   border-radius: 1rem;
   border: 1px solid var(--line);
@@ -229,6 +230,10 @@ textarea { resize: vertical; }
 
 .latest-newsletter-card, .owner-subpanel { background: var(--panel-alt); }
 .latest-newsletter-card { margin-top: 1rem; }
+#latest-newsletter-body {
+  white-space: pre-wrap;
+  line-height: 1.7;
+}
 .subscriber-sheet-toolbar { display: flex; justify-content: flex-end; margin-bottom: .8rem; }
 .subscriber-sheet { display: grid; gap: .5rem; overflow-x: auto; }
 .subscriber-sheet-header, .subscriber-sheet-row { display: grid; grid-template-columns: 180px 260px 140px 170px; gap: .6rem; align-items: center; min-width: 790px; }
