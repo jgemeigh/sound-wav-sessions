@@ -89,7 +89,17 @@ main, .owner-main { padding-bottom: 3rem; }
   grid-template-columns: 1fr;
   align-content: start;
 }
-.hero-image, .upcoming-image { width: 100%; height: 260px; object-fit: cover; border-radius: 1rem; border: 1px solid var(--line); margin-bottom: .9rem; }
+.hero-image, .upcoming-image {
+  width: 100%;
+  height: auto;
+  max-height: min(72vh, 980px);
+  object-fit: contain;
+  border-radius: 1rem;
+  border: 1px solid var(--line);
+  margin-bottom: .9rem;
+  background: rgba(0, 0, 0, 0.26);
+  display: block;
+}
 .poster-kicker { color: var(--acid); text-transform: uppercase; letter-spacing: .12em; }
 .poster-row {
   display: grid;
@@ -197,12 +207,13 @@ textarea { resize: vertical; }
 .hidden { display: none !important; }
 .featured-upcoming-list { display: grid; gap: 1rem; }
 .featured-upcoming-card .poster-frame { transform: none; }
-@media (max-width: 900px) { .hero, .split-section, .newsletter-panels, .detail-layout, .owner-dashboard, .upcoming-banner { grid-template-columns: 1fr; } .section-heading, .site-footer, .site-header, .owner-header { align-items: start; flex-direction: column; } .owner-nav { flex-direction: row; } .poster-frame { transform: none; } .hero-image, .upcoming-image { height: 220px; } .poster-row { grid-template-columns: 1fr; } #upcoming-address-hero, #upcoming-blurb-hero { text-align: left; } }
+@media (max-width: 900px) { .hero, .split-section, .newsletter-panels, .detail-layout, .owner-dashboard, .upcoming-banner { grid-template-columns: 1fr; } .section-heading, .site-footer, .site-header, .owner-header { align-items: start; flex-direction: column; } .owner-nav { flex-direction: row; } .poster-frame { transform: none; } .hero-image, .upcoming-image { max-height: min(62vh, 760px); } .poster-row { grid-template-columns: 1fr; } #upcoming-address-hero, #upcoming-blurb-hero { text-align: left; } }
 @media (max-width: 640px) {
   .site-header, .site-footer, main, .owner-header, .owner-main { width: min(100% - 1rem, 1180px); }
   .panel { padding: 1rem; }
   .donation-grid { grid-template-columns: 1fr; }
-  .archive-card img, .artist-main-image, .upcoming-image, .hero-image { height: 220px; }
+  .archive-card img, .artist-main-image { height: 220px; }
+  .upcoming-image, .hero-image { max-height: min(56vh, 640px); }
   .affiliate-image, .affiliate-admin-preview { max-width: 100%; height: 110px; }
   .section-heading-side { width: 100%; justify-items: start; }
   .artist-grid, .archive-grid {

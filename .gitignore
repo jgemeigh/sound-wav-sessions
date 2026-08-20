@@ -15,3 +15,10 @@ desktop.ini
 # Keep SQL migrations/seeds, but ignore accidental local dumps
 *.sqlite
 *.db
+
+# Local artist-enrichment scratch work
+.artist-upload-stage/
+artist_image_uploads.json
+attach_artist_images.sql
+inspect_*.sql
+update_*.sql
