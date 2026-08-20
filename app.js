@@ -14,7 +14,7 @@ const FUNCTION_BASE_URL = window.SUPABASE_URL ? `${window.SUPABASE_URL}/function
 const fallbackData = {
   siteCopy: {
     name: "SOUND.WAV SESSIONS",
-    eyebrow: "Noise / art / underground / late city",
+    eyebrow: "",
     tagline: "",
     hero_eyebrow: "Omaha underground after dark",
     hero_title: "Basement energy, projector light, and rooms that move.",
@@ -178,8 +178,10 @@ const requireSupabase = (messageId = "login-message") => {
 const formatDate = (value) => value ? new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" }) : "";
 function mergeTextContent(base, incoming) {
   const merged = { ...base };
+  const allowEmptyValues = new Set(["eyebrow", "tagline", "footer_copy", "footer_link_label"]);
   Object.entries(incoming || {}).forEach(([key, value]) => {
-    if (value !== null && value !== undefined && String(value).trim() !== "") merged[key] = value;
+    if (value === null || value === undefined) return;
+    if (allowEmptyValues.has(key) || String(value).trim() !== "") merged[key] = value;
   });
   return merged;
 }
@@ -390,7 +392,7 @@ function renderSiteCopy() {
   const c = state.siteCopy;
   const fallbackCopy = fallbackData.siteCopy;
   document.title = c.name || "SOUND.WAV SESSIONS";
-  q("brand-eyebrow").textContent = c.eyebrow || fallbackCopy.eyebrow || "";
+  q("brand-eyebrow").textContent = c.eyebrow || "";
   q("brand-name").textContent = c.name || "SOUND.WAV SESSIONS";
   q("brand-tagline").textContent = c.tagline || "";
   q("hero-eyebrow").textContent = c.hero_eyebrow || "";

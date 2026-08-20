@@ -16,7 +16,7 @@
   <div id="public-shell" class="hidden">
     <header class="site-header" id="top">
       <div class="brand-lockup">
-        <p class="eyebrow" id="brand-eyebrow">Noise / art / underground / late city</p>
+        <p class="eyebrow" id="brand-eyebrow"></p>
         <h1 id="brand-name">SOUND.WAV SESSIONS</h1>
         <p class="tagline" id="brand-tagline"></p>
       </div>
@@ -229,7 +229,7 @@
           <h3>Edit visitor-facing text</h3>
           <form id="site-copy-form" class="stack-form">
             <label>Site name<input type="text" name="name" required></label>
-            <label>Top eyebrow<input type="text" name="eyebrow" required></label>
+            <label>Top eyebrow<input type="text" name="eyebrow"></label>
             <label>Tagline<input type="text" name="tagline" required></label>
             <label>Hero eyebrow<input type="text" name="heroEyebrow" required></label>
             <label>Hero title<input type="text" name="heroTitle" required></label>
@@ -559,7 +559,7 @@
   </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js?v=20260427a"></script>
-  <script src="app.js?v=20260820b"></script>
+  <script src="app.js?v=20260820c"></script>
   <script id="soundwav-upcoming-manager">
     (() => {
       return;
@@ -1022,7 +1022,6 @@
           footer_copy: 'footer-copy', footer_link_label: 'footer-link-label'
         };
         const fallbackCopy = {
-          eyebrow: 'Noise / art / underground / late city',
           newsletter_title: 'Stay on the list',
           newsletter_copy: 'Lineup drops, flyer releases, venue updates, and last-minute location notes land here first.',
           archive_title: 'Past sessions',
