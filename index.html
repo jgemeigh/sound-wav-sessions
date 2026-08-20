@@ -17,7 +17,7 @@
     <header class="site-header" id="top">
       <div class="brand-lockup">
         <p class="eyebrow" id="brand-eyebrow"></p>
-        <h1 id="brand-name">SOUND.WAV SESSIONS</h1>
+        <h1 id="brand-name"></h1>
         <p class="tagline" id="brand-tagline"></p>
       </div>
       <div class="header-actions">
@@ -553,7 +553,7 @@
   </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js?v=20260427a"></script>
-  <script src="app.js?v=20260820c"></script>
+  <script src="app.js?v=20260820d"></script>
   <script id="soundwav-upcoming-manager">
     (() => {
       return;
@@ -1120,11 +1120,24 @@
         });
       };
       document.addEventListener('DOMContentLoaded', () => {
+        const hydrateSiteCopyFromSupabase = async () => {
+          const client = getClient();
+          if (!client) return;
+          try {
+            const { data, error } = await client.from('site_copy').select('*').eq('id', 1).maybeSingle();
+            if (error || !data) return;
+            applySiteCopy(data);
+            fillSiteCopyForm(data);
+          } catch (error) {
+            console.error(error);
+          }
+        };
         const cached = getCache();
         if (cached.siteCopy) {
           applySiteCopy(cached.siteCopy);
           fillSiteCopyForm(cached.siteCopy);
         }
+        hydrateSiteCopyFromSupabase();
         const saveSiteText = async () => {
           const form = q('site-copy-form');
           if (!form) return false;

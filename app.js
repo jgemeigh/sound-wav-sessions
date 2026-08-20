@@ -13,7 +13,7 @@ const FUNCTION_BASE_URL = window.SUPABASE_URL ? `${window.SUPABASE_URL}/function
 
 const fallbackData = {
   siteCopy: {
-    name: "SOUND.WAV SESSIONS",
+    name: "",
     eyebrow: "",
     tagline: "",
     hero_eyebrow: "Omaha underground after dark",
@@ -393,7 +393,7 @@ function renderSiteCopy() {
   const fallbackCopy = fallbackData.siteCopy;
   document.title = c.name || "SOUND.WAV SESSIONS";
   q("brand-eyebrow").textContent = c.eyebrow || "";
-  q("brand-name").textContent = c.name || "SOUND.WAV SESSIONS";
+  q("brand-name").textContent = c.name || "";
   q("brand-tagline").textContent = c.tagline || "";
   q("hero-eyebrow").textContent = c.hero_eyebrow || "";
   q("hero-title").textContent = c.hero_title || "";
