@@ -1021,7 +1021,24 @@
           affiliates_copy: 'affiliates-copy', support_title: 'support-title', support_copy: 'support-copy',
           footer_copy: 'footer-copy', footer_link_label: 'footer-link-label'
         };
-        Object.entries(map).forEach(([key, id]) => { const node = q(id); if (node) node.textContent = payload[key] || ''; });
+        const fallbackCopy = {
+          eyebrow: 'Noise / art / underground / late city',
+          tagline: 'DIY nights for blown speakers, raw sets, and the people still building scenes by hand.',
+          hero_eyebrow: 'Omaha underground after dark',
+          hero_title: 'Basement energy, projector light, and rooms that move.',
+          hero_text: 'SOUND.WAV SESSIONS brings together live music, experimental sets, visual artists, and scene documentation in one living archive. Pull up for the next one, catch the flyers from past nights, and tap in if your project belongs in the room.',
+          newsletter_title: 'Stay on the list',
+          newsletter_copy: 'Lineup drops, flyer releases, venue updates, and last-minute location notes land here first.',
+          archive_title: 'Past sessions',
+          archive_copy: 'Flyers, photos, and footage from the nights already burned into the wall.',
+          artists_title: 'Current rotation',
+          artists_copy: 'Artists moving through the room right now, with photos and direct links into their worlds.',
+          affiliates_title: 'Affiliates + scene love',
+          affiliates_copy: 'Friends, contributors, and collectives helping the Omaha underground stay loud.',
+          support_title: 'Keep the room alive',
+          support_copy: 'Donations help cover artist support, gear, flyers, documentation, and future drops.'
+        };
+        Object.entries(map).forEach(([key, id]) => { const node = q(id); if (node) node.textContent = payload[key] || fallbackCopy[key] || ''; });
         const footer = document.querySelector('.site-footer');
         if (footer) {
           const hasFooterText = Boolean(String(payload.footer_copy || '').trim() || String(payload.footer_link_label || '').trim());
