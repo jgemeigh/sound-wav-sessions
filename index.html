@@ -3096,6 +3096,26 @@
         if (q("latest-newsletter-meta")) q("latest-newsletter-meta").textContent = currentNewsletter ? (currentNewsletter.sent_at ? ('Broadcast ' + formatPublicDate(currentNewsletter.sent_at) + '.') : ('Saved ' + formatPublicDate(currentNewsletter.created_at) + '.')) : "";
         renderPublicDonations(donations);
       };
+      const bindPublicArtistJumps = () => {
+        if (document.body.dataset.artistJumpBound === "true") return;
+        document.body.dataset.artistJumpBound = "true";
+        document.addEventListener("click", (event) => {
+          const trigger = event.target.closest("[data-artist-jump]");
+          if (!trigger) return;
+          event.preventDefault();
+          const artistName = String(trigger.dataset.artistJump || "").trim();
+          if (!artistName) return;
+          const cards = Array.from(document.querySelectorAll("#artist-grid .artist-card"));
+          const match = cards.find((card) => {
+            const heading = card.querySelector("h3");
+            return String(heading?.textContent || "").trim().toLowerCase() === artistName.toLowerCase();
+          });
+          q("artists")?.scrollIntoView({ behavior: "smooth", block: "start" });
+          if (!match) return;
+          match.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" });
+          cards.forEach((card) => card.classList.toggle("is-selected", card === match));
+        }, true);
+      };
       const bindPublicArtistThumbs = () => {
         const artistGrid = q("artist-grid");
         if (!artistGrid || artistGrid.dataset.thumbBound === "true") return;
@@ -4460,6 +4480,7 @@
         bindPublicArtistThumbs();
         hydratePublicEntities();
         hydrateOwnerEntities();
+        bindPublicArtistJumps();
         window.addEventListener("soundwav:owner-authenticated", () => {
           hydratePublicEntities();
           hydrateOwnerEntities();
