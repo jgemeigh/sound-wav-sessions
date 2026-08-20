@@ -1789,7 +1789,16 @@
         const currentNode = q("upcoming-current-admin");
         const draftNode = q("upcoming-draft-list");
         const draftItems = sortUpcomingAdminItems(null, drafts());
-        if (currentNode) currentNode.innerHTML = "";
+        const active = current();
+        if (currentNode) {
+          currentNode.classList.toggle("hidden", !(active && active.title));
+          currentNode.setAttribute("aria-hidden", active && active.title ? "false" : "true");
+          currentNode.innerHTML = active && active.title
+            ? '<article class="admin-list-item">' + (editingCurrent
+                ? upcomingEditorMarkup(active, "current")
+                : '<img class="upcoming-image" src="' + (active.banner || storageUrl(active.bannerPath || "") || "") + '" alt="' + active.title + ' current banner"><p><strong>' + active.title + '</strong> <span class="current-tag">Current</span></p><p>' + (active.dateLabel || formatUpcomingDateLabel(active.date || "")) + '</p><p>' + (active.venue || "") + (active.address ? ' / ' + active.address : '') + '</p><p>' + ((active.artists || []).length ? (active.artists || []).join(' / ') : 'No artists listed') + '</p><p>' + (active.description || '') + '</p><div class="list-actions"><button class="mini-button" type="button" data-final-load-current="1">Edit current</button><button class="mini-button ghost" type="button" data-final-archive-current="1">Archive show</button><button class="mini-button danger" type="button" data-final-clear-current="1">Delete current</button></div>') + '</article>'
+            : "";
+        }
         if (draftNode) {
           draftNode.innerHTML = draftItems.length
             ? draftItems.map((item) => '<article class="admin-list-item">' + (editingDraftId === item.id
