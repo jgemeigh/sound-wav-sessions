@@ -1545,6 +1545,14 @@
         const draftId = target.dataset.finalSetCurrentId || target.dataset.upcomingSetCurrentId || "";
         if (window.__soundwavSetCurrentUpcoming) window.__soundwavSetCurrentUpcoming(draftId);
       }, true);
+      const renderArtistJumpLinks = (artists) =>
+        (artists || [])
+          .map((artist) => {
+            const label = String(artist || "").trim();
+            if (!label) return "";
+            return '<a class="social-link" href="#artists" data-artist-jump="' + label.replace(/"/g, "&quot;") + '">' + label + "</a>";
+          })
+          .join("");
       const renderPublic = (item) => {
         const data = item || { title: "", date: "", dateLabel: "", venue: "", address: "", description: "", link: "", banner: "", artists: [] };
         const dateLabel = data.dateLabel || formatUpcomingDateLabel(data.date || "");
