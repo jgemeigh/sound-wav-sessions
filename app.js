@@ -69,6 +69,7 @@ const fallbackData = {
 };
 window.__soundwavFallbackDonations = fallbackData.donations;
 
+(() => {
 const hasSupabaseConfig = !!(window.supabase && window.SUPABASE_URL && window.SUPABASE_ANON_KEY);
 const supabase = hasSupabaseConfig ? window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY) : null;
 window.__soundwavSupabaseClient = supabase;
@@ -930,6 +931,7 @@ window.__soundwavOpenTestNewsletterBroadcast = openTestNewsletterBroadcast;
 initSoundwaveBackground();
 renderAll();
 initialize().catch((error) => { console.error(error); setMessage("login-message", error.message || "Setup error", "error"); });
+})();
 
 
 
