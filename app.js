@@ -392,7 +392,7 @@ function renderSiteCopy() {
   document.title = c.name || "SOUND.WAV SESSIONS";
   q("brand-eyebrow").textContent = c.eyebrow || fallbackCopy.eyebrow || "";
   q("brand-name").textContent = c.name || "SOUND.WAV SESSIONS";
-  q("brand-tagline").textContent = c.tagline || fallbackCopy.tagline || "";
+  q("brand-tagline").textContent = c.tagline || "";
   q("hero-eyebrow").textContent = c.hero_eyebrow || "";
   q("hero-title").textContent = c.hero_title || "";
   q("hero-text").textContent = c.hero_text || "";
