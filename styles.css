@@ -67,7 +67,7 @@ main, .owner-main { padding-bottom: 3rem; }
 .panel { background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow); backdrop-filter: blur(10px); border-radius: 1.25rem; padding: 1.4rem; margin-bottom: 1.25rem; }
 .hero { display: grid; grid-template-columns: 1fr; gap: 1rem; align-items: stretch; }
 .hero-copy { max-width: 72rem; }
-.banner-text { font-size: clamp(2rem, 5vw, 4.2rem); line-height: .95; margin: 0 0 1rem; }
+.banner-text { font-size: clamp(2rem, 5vw, 4.2rem); line-height: .95; margin: 0 0 1rem; color: var(--acid); text-shadow: 2px 2px 0 rgba(255,107,44,.5); }
 .button, .mini-button { display: inline-block; border: none; cursor: pointer; text-decoration: none; background: linear-gradient(135deg, var(--hot), #ff9b3f); color: #170d0d; padding: .85rem 1.2rem; border-radius: 999px; font-weight: 700; }
 .button.ghost, .mini-button.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
 .mini-button { padding: .5rem .9rem; font-size: .85rem; }
