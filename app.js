@@ -15,7 +15,7 @@ const fallbackData = {
   siteCopy: {
     name: "SOUND.WAV SESSIONS",
     eyebrow: "Noise / art / underground / late city",
-    tagline: "DIY nights for blown speakers, raw sets, and the people still building scenes by hand.",
+    tagline: "",
     hero_eyebrow: "Omaha underground after dark",
     hero_title: "Basement energy, projector light, and rooms that move.",
     hero_text: "SOUND.WAV SESSIONS brings together live music, experimental sets, visual artists, and scene documentation in one living archive. Pull up for the next one, catch the flyers from past nights, and tap in if your project belongs in the room.",
