@@ -83,7 +83,7 @@
           <article class="panel latest-newsletter-card">
             <p class="eyebrow">Latest dispatch</p>
             <h3 id="latest-newsletter-subject"></h3>
-            <p id="latest-newsletter-body"></p>
+            <div id="latest-newsletter-body" class="newsletter-body"></div>
             <p class="small-note" id="latest-newsletter-meta"></p>
           </article>
         </div>
@@ -718,6 +718,14 @@
         form.elements.upcomingDraftId.value = "";
         setPreview("");
       };
+      const renderArtistJumpLinks = (artists) =>
+        (artists || [])
+          .map((artist) => {
+            const label = String(artist || "").trim();
+            if (!label) return "";
+            return '<a class="social-link" href="#artists" data-artist-jump="' + label.replace(/"/g, "&quot;") + '">' + label + "</a>";
+          })
+          .join("");
       const syncCurrentToPublic = (draft, client) => {
         const current = {
           title: draft.title || "",
@@ -752,11 +760,9 @@
         setText("upcoming-venue", current.venue);
         setText("upcoming-address", current.address);
         const artistsNode = q("upcoming-artists");
-        if (artistsNode) {
-          artistsNode.innerHTML = (current.artists || [])
-            .map((artist) => '<span class="social-link">' + artist + "</span>")
-            .join("");
-        }
+        if (artistsNode) artistsNode.innerHTML = renderArtistJumpLinks(current.artists || []);
+        const heroArtistsNode = q("upcoming-artists-hero");
+        if (heroArtistsNode) heroArtistsNode.innerHTML = renderArtistJumpLinks(current.artists || []);
         ["upcoming-image", "upcoming-hero-image"].forEach((id) => {
           const img = q(id);
           if (!img) return;
@@ -1529,13 +1535,9 @@
         text("upcoming-venue", data.venue);
         text("upcoming-address", data.address);
         const artistsNode = q("upcoming-artists");
-        if (artistsNode) {
-          artistsNode.innerHTML = (data.artists || []).map((artist) => '<span class="social-link">' + artist + "</span>").join("");
-        }
+        if (artistsNode) artistsNode.innerHTML = renderArtistJumpLinks(data.artists || []);
         const heroArtistsNode = q("upcoming-artists-hero");
-        if (heroArtistsNode) {
-          heroArtistsNode.innerHTML = (data.artists || []).map((artist) => '<span class="social-link">' + artist + "</span>").join("");
-        }
+        if (heroArtistsNode) heroArtistsNode.innerHTML = renderArtistJumpLinks(data.artists || []);
         ["upcoming-image", "upcoming-hero-image"].forEach((id) => {
           const img = q(id);
           if (!img) return;

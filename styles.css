@@ -208,13 +208,12 @@ textarea { resize: vertical; }
 .hidden { display: none !important; }
 .featured-upcoming-list { display: grid; gap: 1rem; }
 .featured-upcoming-card .poster-frame { transform: none; }
-@media (max-width: 900px) { .hero, .split-section, .newsletter-panels, .detail-layout, .owner-dashboard, .upcoming-banner { grid-template-columns: 1fr; } .section-heading, .site-footer, .site-header, .owner-header { align-items: start; flex-direction: column; } .owner-nav { flex-direction: row; } .poster-frame { transform: none; } .hero-image, .upcoming-image { max-height: min(62vh, 760px); } .poster-row { grid-template-columns: 1fr; } #upcoming-address-hero, #upcoming-blurb-hero { text-align: left; } }
+@media (max-width: 900px) { .hero, .split-section, .newsletter-panels, .detail-layout, .owner-dashboard, .upcoming-banner { grid-template-columns: 1fr; } .section-heading, .site-footer, .site-header, .owner-header { align-items: start; flex-direction: column; } .owner-nav { flex-direction: row; } .poster-frame { transform: none; } .poster-row { grid-template-columns: 1fr; } #upcoming-address-hero, #upcoming-blurb-hero { text-align: left; } }
 @media (max-width: 640px) {
   .site-header, .site-footer, main, .owner-header, .owner-main { width: min(100% - 1rem, 1180px); }
   .panel { padding: 1rem; }
   .donation-grid { grid-template-columns: 1fr; }
   .archive-card img, .artist-main-image { height: 220px; }
-  .upcoming-image, .hero-image { max-height: min(56vh, 640px); }
   .affiliate-image, .affiliate-admin-preview { max-width: 100%; height: 110px; }
   .section-heading-side { width: 100%; justify-items: start; }
   .artist-grid, .archive-grid {
@@ -230,9 +229,11 @@ textarea { resize: vertical; }
 
 .latest-newsletter-card, .owner-subpanel { background: var(--panel-alt); }
 .latest-newsletter-card { margin-top: 1rem; }
+.newsletter-body,
 #latest-newsletter-body {
   white-space: pre-wrap;
   line-height: 1.7;
+  margin: 0;
 }
 .subscriber-sheet-toolbar { display: flex; justify-content: flex-end; margin-bottom: .8rem; }
 .subscriber-sheet { display: grid; gap: .5rem; overflow-x: auto; }
