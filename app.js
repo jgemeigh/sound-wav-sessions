@@ -393,9 +393,9 @@ function renderSiteCopy() {
   q("brand-eyebrow").textContent = c.eyebrow || fallbackCopy.eyebrow || "";
   q("brand-name").textContent = c.name || "SOUND.WAV SESSIONS";
   q("brand-tagline").textContent = c.tagline || fallbackCopy.tagline || "";
-  q("hero-eyebrow").textContent = c.hero_eyebrow || fallbackCopy.hero_eyebrow || "";
-  q("hero-title").textContent = c.hero_title || fallbackCopy.hero_title || "";
-  q("hero-text").textContent = c.hero_text || fallbackCopy.hero_text || "";
+  q("hero-eyebrow").textContent = c.hero_eyebrow || "";
+  q("hero-title").textContent = c.hero_title || "";
+  q("hero-text").textContent = c.hero_text || "";
   q("newsletter-title").textContent = c.newsletter_title || fallbackCopy.newsletter_title || "";
   q("newsletter-copy").textContent = c.newsletter_copy || fallbackCopy.newsletter_copy || "";
   q("archive-title").textContent = c.archive_title || fallbackCopy.archive_title || "";
