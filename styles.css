@@ -219,8 +219,24 @@ textarea { resize: vertical; }
   .site-header, .site-footer, main, .owner-header, .owner-main { width: min(100% - 1rem, 1180px); }
   .panel { padding: 1rem; }
   .site-header { padding-top: 1rem; }
+  .brand-lockup {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .brand-lockup .eyebrow {
+    max-width: 100%;
+    font-size: .66rem;
+    line-height: 1.35;
+    letter-spacing: .08em;
+    overflow-wrap: anywhere;
+  }
   .brand-lockup h1 {
-    font-size: clamp(2.2rem, 10vw, 3.4rem);
+    max-width: min(100%, 13rem);
+    font-size: clamp(1.55rem, 7.2vw, 2rem);
+    line-height: .98;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: normal;
   }
   .eyebrow { font-size: .74rem; letter-spacing: .15em; }
   .tagline { margin-top: .2rem; font-size: .95rem; }
