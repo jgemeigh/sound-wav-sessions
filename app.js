@@ -419,10 +419,15 @@ function renderSiteCopy() {
 function slugify(value) {
   return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
-function findArtistMatchByName(name) {
+function normalizeArtistLookupName(name) {
   const normalized = String(name || "").trim().toLowerCase();
+  if (normalized === "anton luciano") return "antonious";
+  return normalized;
+}
+function findArtistMatchByName(name) {
+  const normalized = normalizeArtistLookupName(name);
   if (!normalized) return null;
-  return state.artists.find((entry) => String(entry.name || "").trim().toLowerCase() === normalized) || null;
+  return state.artists.find((entry) => normalizeArtistLookupName(entry.name) === normalized) || null;
 }
 function renderArtistJumpLink(label) {
   const match = findArtistMatchByName(label);

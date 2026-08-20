@@ -553,7 +553,7 @@
   </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js?v=20260427a"></script>
-  <script src="app.js?v=20260427a"></script>
+  <script src="app.js?v=20260820b"></script>
   <script id="soundwav-upcoming-manager">
     (() => {
       return;
@@ -3118,10 +3118,11 @@
           event.preventDefault();
           const artistName = String(trigger.dataset.artistJump || "").trim();
           if (!artistName) return;
+          const lookupName = artistName.toLowerCase() === "anton luciano" ? "antonious" : artistName;
           const cards = Array.from(document.querySelectorAll("#artist-grid .artist-card"));
           const match = cards.find((card) => {
             const heading = card.querySelector("h3");
-            return String(heading?.textContent || "").trim().toLowerCase() === artistName.toLowerCase();
+            return String(heading?.textContent || "").trim().toLowerCase() === lookupName.toLowerCase();
           });
           q("artists")?.scrollIntoView({ behavior: "smooth", block: "start" });
           if (!match) return;
