@@ -1392,6 +1392,7 @@
           if (error) throw error;
           const wipe = await apiClient.from("upcoming_show_artists").delete().eq("upcoming_show_id", 1);
           if (wipe.error) throw wipe.error;
+          publishedCurrent = null;
           localStorage.removeItem(CURRENT_KEY);
           syncSharedUpcomingState(null);
           renderAdmin();
@@ -1408,6 +1409,7 @@
           if (insert.error) throw insert.error;
         }
         setCurrent(lead);
+        publishedCurrent = lead;
         syncSharedUpcomingState(lead);
         renderAdmin();
         preview(lead.banner || storageUrl(lead.bannerPath || ""));
@@ -1448,6 +1450,7 @@
           if (insert.error) throw insert.error;
         }
         setCurrent({ ...nextItem, isCurrent: true });
+        publishedCurrent = { ...nextItem, isCurrent: true };
         await syncDraftsFromSupabase(apiClient);
         syncSharedUpcomingState({ ...nextItem, isCurrent: true });
         return savedDraft;
@@ -1600,6 +1603,7 @@
         }
         return candidate;
       };
+      let publishedCurrent = null;
       let editingCurrent = false;
       let editingDraftId = "";
       const upcomingEditorMarkup = (item, mode) =>
@@ -1754,6 +1758,7 @@
             artists: (artistsRes.data || []).map((item) => item.artist_name)
           });
           if (!next.title) {
+            publishedCurrent = null;
             localStorage.removeItem(CURRENT_KEY);
             syncSharedUpcomingState(null);
             renderAdmin();
@@ -1773,6 +1778,7 @@
             next.artists = (matchingDraft.artists && matchingDraft.artists.length) ? matchingDraft.artists : next.artists;
             next.isCurrent = true;
           }
+          publishedCurrent = next;
           setCurrent(next);
           syncSharedUpcomingState(next);
           renderAdmin();
@@ -1789,7 +1795,7 @@
         const currentNode = q("upcoming-current-admin");
         const draftNode = q("upcoming-draft-list");
         const draftItems = sortUpcomingAdminItems(null, drafts());
-        const active = current();
+        const active = publishedCurrent?.title ? publishedCurrent : current();
         if (currentNode) {
           currentNode.classList.toggle("hidden", !(active && active.title));
           currentNode.setAttribute("aria-hidden", active && active.title ? "false" : "true");
@@ -2044,6 +2050,7 @@
             if (error) throw error;
             const wipe = await apiClient.from("upcoming_show_artists").delete().eq("upcoming_show_id", 1);
             if (wipe.error) throw wipe.error;
+            publishedCurrent = null;
             localStorage.removeItem(CURRENT_KEY);
             syncSharedUpcomingState(null);
             if (window.__soundwavSyncShowsState) await window.__soundwavSyncShowsState();
@@ -2247,6 +2254,7 @@
           if (error) throw error;
           const wipe = await apiClient.from("upcoming_show_artists").delete().eq("upcoming_show_id", 1);
           if (wipe.error) throw wipe.error;
+          publishedCurrent = null;
           localStorage.removeItem(CURRENT_KEY);
           syncSharedUpcomingState(null);
           editingCurrent = false;
