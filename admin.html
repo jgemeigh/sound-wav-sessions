@@ -559,7 +559,7 @@
   </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js?v=20260427a"></script>
-  <script src="app.js?v=20260820f"></script>
+  <script src="app.js?v=20260820g"></script>
   <script id="soundwav-upcoming-manager">
     (() => {
       return;
@@ -1021,18 +1021,7 @@
           affiliates_copy: 'affiliates-copy', support_title: 'support-title', support_copy: 'support-copy',
           footer_copy: 'footer-copy', footer_link_label: 'footer-link-label'
         };
-        const fallbackCopy = {
-          newsletter_title: 'Stay on the list',
-          newsletter_copy: 'Lineup drops, flyer releases, venue updates, and last-minute location notes land here first.',
-          archive_title: 'Past sessions',
-          archive_copy: 'Flyers, photos, and footage from the nights already burned into the wall.',
-          artists_title: 'Current rotation',
-          artists_copy: 'Artists moving through the room right now, with photos and direct links into their worlds.',
-          affiliates_title: 'Affiliates + scene love',
-          affiliates_copy: 'Friends, contributors, and collectives helping the Omaha underground stay loud.',
-          support_title: 'Keep the room alive',
-          support_copy: 'Donations help cover artist support, gear, flyers, documentation, and future drops.'
-        };
+        const fallbackCopy = {};
         Object.entries(map).forEach(([key, id]) => { const node = q(id); if (node) node.textContent = payload[key] || fallbackCopy[key] || ''; });
         const footer = document.querySelector('.site-footer');
         if (footer) {
@@ -1079,6 +1068,24 @@
         Object.entries(values).forEach(([key, value]) => {
           if (form.elements[key]) form.elements[key].value = value;
         });
+      };
+      const sanitizeCachedSiteCopy = (payload) => {
+        const stale = new Set([
+          'Omaha underground after dark',
+          'Basement energy, projector light, and rooms that move.',
+          'SOUND.WAV SESSIONS brings together live music, experimental sets, visual artists, and scene documentation in one living archive. Pull up for the next one, catch the flyers from past nights, and tap in if your project belongs in the room.',
+          'Stay on the list',
+          'Lineup drops, flyer releases, venue updates, and last-minute location notes land here first.',
+          'Past sessions',
+          'Flyers, photos, and footage from the nights already burned into the wall.',
+          'Current rotation',
+          'Artists moving through the room right now, with photos and direct links into their worlds.',
+          'Affiliates + scene love',
+          'Friends, contributors, and collectives helping the Omaha underground stay loud.',
+          'Keep the room alive',
+          'Donations help cover artist support, gear, flyers, documentation, and future drops.'
+        ]);
+        return Object.fromEntries(Object.entries(payload || {}).map(([key, value]) => [key, stale.has(String(value || '').trim()) ? '' : value]));
       };
       const uploadFiles = async (client, prefix, files) => {
         const paths = [];
@@ -1150,8 +1157,9 @@
         };
         const cached = getCache();
         if (cached.siteCopy) {
-          applySiteCopy(cached.siteCopy);
-          fillSiteCopyForm(cached.siteCopy);
+          const siteCopy = sanitizeCachedSiteCopy(cached.siteCopy);
+          applySiteCopy(siteCopy);
+          fillSiteCopyForm(siteCopy);
         }
         hydrateSiteCopyFromSupabase();
         const saveSiteText = async () => {

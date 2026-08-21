@@ -16,19 +16,19 @@ const fallbackData = {
     name: "",
     eyebrow: "",
     tagline: "",
-    hero_eyebrow: "Omaha underground after dark",
-    hero_title: "Basement energy, projector light, and rooms that move.",
-    hero_text: "SOUND.WAV SESSIONS brings together live music, experimental sets, visual artists, and scene documentation in one living archive. Pull up for the next one, catch the flyers from past nights, and tap in if your project belongs in the room.",
-    newsletter_title: "Stay on the list",
-    newsletter_copy: "Lineup drops, flyer releases, venue updates, and last-minute location notes land here first.",
-    archive_title: "Past sessions",
-    archive_copy: "Flyers, photos, and footage from the nights already burned into the wall.",
-    artists_title: "Current rotation",
-    artists_copy: "Artists moving through the room right now, with photos and direct links into their worlds.",
-    affiliates_title: "Affiliates + scene love",
-    affiliates_copy: "Friends, contributors, and collectives helping the Omaha underground stay loud.",
-    support_title: "Keep the room alive",
-    support_copy: "Donations help cover artist support, gear, flyers, documentation, and future drops.",
+    hero_eyebrow: "",
+    hero_title: "",
+    hero_text: "",
+    newsletter_title: "",
+    newsletter_copy: "",
+    archive_title: "",
+    archive_copy: "",
+    artists_title: "",
+    artists_copy: "",
+    affiliates_title: "",
+    affiliates_copy: "",
+    support_title: "",
+    support_copy: "",
     footer_copy: "",
     footer_link_label: ""
   },
@@ -179,10 +179,30 @@ const requireSupabase = (messageId = "login-message") => {
 const formatDate = (value) => value ? new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" }) : "";
 function mergeTextContent(base, incoming) {
   const merged = { ...base };
-  const allowEmptyValues = new Set(["eyebrow", "tagline", "footer_copy", "footer_link_label"]);
+  const allowEmptyValues = new Set(Object.keys(fallbackData.siteCopy));
+  const staleGeneratedValues = new Set([
+    "Omaha underground after dark",
+    "Basement energy, projector light, and rooms that move.",
+    "SOUND.WAV SESSIONS brings together live music, experimental sets, visual artists, and scene documentation in one living archive. Pull up for the next one, catch the flyers from past nights, and tap in if your project belongs in the room.",
+    "Stay on the list",
+    "Lineup drops, flyer releases, venue updates, and last-minute location notes land here first.",
+    "Past sessions",
+    "Flyers, photos, and footage from the nights already burned into the wall.",
+    "Current rotation",
+    "Artists moving through the room right now, with photos and direct links into their worlds.",
+    "Affiliates + scene love",
+    "Friends, contributors, and collectives helping the Omaha underground stay loud.",
+    "Keep the room alive",
+    "Donations help cover artist support, gear, flyers, documentation, and future drops."
+  ]);
   Object.entries(incoming || {}).forEach(([key, value]) => {
     if (value === null || value === undefined) return;
-    if (allowEmptyValues.has(key) || String(value).trim() !== "") merged[key] = value;
+    const text = String(value).trim();
+    if (staleGeneratedValues.has(text)) {
+      merged[key] = "";
+      return;
+    }
+    if (allowEmptyValues.has(key) || text !== "") merged[key] = value;
   });
   return merged;
 }
@@ -254,6 +274,14 @@ function artistImagesOrPlaceholder(images) {
     : [];
   return normalized.length ? normalized : [ARTIST_PLACEHOLDER];
 }
+function normalizeAffiliate(item) {
+  const imagePath = item?.image_path || item?.imagePath || "";
+  return {
+    ...item,
+    imagePath,
+    image: item?.image || (imagePath ? publicUrl(imagePath) : "")
+  };
+}
 function persistPublicState() {
   try {
     localStorage.setItem(PUBLIC_STATE_CACHE_KEY, JSON.stringify({
@@ -303,7 +331,7 @@ function loadCachedPublicState() {
       }));
     }
     if (Array.isArray(cached.shows) && cached.shows.length) state.shows = cached.shows;
-    if (Array.isArray(cached.affiliates) && cached.affiliates.length) state.affiliates = cached.affiliates;
+    if (Array.isArray(cached.affiliates) && cached.affiliates.length) state.affiliates = cached.affiliates.map(normalizeAffiliate);
     if (Array.isArray(cached.newsletters) && cached.newsletters.length) state.newsletters = cached.newsletters;
   } catch (error) {
     console.error(error);
@@ -367,7 +395,7 @@ async function loadPublicData() {
   (showMediaRes.data || []).forEach((item) => { if (!mediaByShow.has(item.show_id)) mediaByShow.set(item.show_id, { images: [], videos: [] }); const bucket = mediaByShow.get(item.show_id); if (item.media_kind === "image") bucket.images.push(publicUrl(item.storage_path)); else bucket.videos.push(item.external_url); });
   state.shows = (showsRes.data || []).map((show) => ({ id: show.id, title: show.title, date: show.show_date, venue: show.venue, address: show.address || "", description: show.description, banner: publicUrl(show.banner_path), bannerPath: show.banner_path, artists: artistsByShow.get(show.id) || [], gallery: mediaByShow.get(show.id)?.images || [], videos: mediaByShow.get(show.id)?.videos || [] }));
   if (!state.shows.length) state.shows = fallbackData.shows;
-  state.affiliates = (affiliatesRes.data || []).length ? affiliatesRes.data : fallbackData.affiliates;
+  state.affiliates = (affiliatesRes.data || []).length ? affiliatesRes.data.map(normalizeAffiliate) : fallbackData.affiliates.map(normalizeAffiliate);
   state.newsletters = (newslettersRes.data || []).length
     ? [...newslettersRes.data].sort((left, right) => {
         if (left.is_current && !right.is_current) return -1;
@@ -540,7 +568,7 @@ function startArtistCarousels() {
   });
 }
 function renderArtists() { q("artist-grid").innerHTML = state.artists.map((artist) => { const images = artistImagesOrPlaceholder(artist.images); return `<article class="artist-card" id="artist-${slugify(artist.name)}" data-artist-images='${JSON.stringify(images).replace(/'/g, "&apos;")}'><img class="artist-main-image" src="${images[0] || ''}" alt="${artist.name}"><div class="artist-copy"><p class="eyebrow">${artist.genre}</p><h3>${artist.name}</h3><p>${artist.bio}</p><div class="artist-thumbs">${images.slice(0, 4).map((image, index) => `<img src="${image}" alt="${artist.name} photo" data-artist-thumb-index="${index}"${index === 0 ? ' class="active"' : ""}>`).join("")}</div><div class="platform-links">${platformLinks(artist.links)}</div></div></article>`; }).join(""); startArtistCarousels(); }
-function renderAffiliates() { q("affiliate-grid").innerHTML = state.affiliates.map((item) => `<article class="affiliate-card"><h3>${item.name}</h3><p>${item.blurb}</p><a href="${item.url}" target="_blank" rel="noreferrer">Visit link</a></article>`).join(""); }
+function renderAffiliates() { q("affiliate-grid").innerHTML = state.affiliates.map((item) => `<article class="affiliate-card">${item.image ? `<img class="affiliate-image" src="${item.image}" alt="${item.name || "Affiliate"}">` : ""}<h3>${item.name}</h3><p>${item.blurb}</p><a href="${item.url}" target="_blank" rel="noreferrer">Visit link</a></article>`).join(""); }
 function renderNewsletters() {
   const latest = state.newsletters.find((item) => item?.is_current) || state.newsletters[0];
   if (q("latest-newsletter-subject")) {
