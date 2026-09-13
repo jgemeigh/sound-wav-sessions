@@ -195,7 +195,7 @@
         <h2>SOUND.WAV control room</h2>
       </div>
       <div class="owner-header-actions">
-        <button class="button ghost" id="back-to-site" type="button" onclick="window.location.href='index.html';">Back to site</button>
+        <button class="button ghost" id="back-to-site" type="button">Back to site</button>
         <button class="button ghost hidden" id="logout-button" type="button">Log out</button>
       </div>
     </header>
@@ -460,7 +460,12 @@
         q('owner-dashboard')?.classList.add('hidden');
         q('logout-button')?.classList.add('hidden');
       };
-      const showPublicSite = () => {
+      const showPublicSite = (event) => {
+        event?.preventDefault();
+        if (document.body?.dataset?.appPage === 'admin') {
+          window.location.href = 'index.html';
+          return;
+        }
         q('owner-shell')?.classList.add('hidden');
         q('public-shell')?.classList.remove('hidden');
         if (window.__soundwavRenderAll) window.__soundwavRenderAll();
@@ -522,6 +527,10 @@
           try { await client.auth.signOut(); } catch (_) {}
         }
         localStorage.removeItem(OWNER_KEY);
+        if (document.body?.dataset?.appPage === 'admin') {
+          window.location.href = 'index.html';
+          return false;
+        }
         showOwnerLogin();
         setLoginMessage('Logged out.', '');
         return false;
@@ -553,7 +562,7 @@
   </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js?v=20260427a"></script>
-  <script src="app.js?v=20260820g"></script>
+  <script src="app.js?v=20260913a"></script>
   <script id="soundwav-upcoming-manager">
     (() => {
       return;
@@ -561,6 +570,7 @@
       const CURRENT_KEY = "soundwav-current-upcoming";
       const BUCKET = "soundwav-media";
       const q = (id) => document.getElementById(id);
+      const isAdminPage = document.body?.dataset?.appPage === "admin";
       const getClient = () => {
         if (window.__soundwavRescueClient) return window.__soundwavRescueClient;
         if (!window.supabase || !window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) return null;
@@ -1054,22 +1064,16 @@
         });
       };
       const sanitizeCachedSiteCopy = (payload) => {
-        const stale = new Set([
-          'Omaha underground after dark',
-          'Basement energy, projector light, and rooms that move.',
-          'SOUND.WAV SESSIONS brings together live music, experimental sets, visual artists, and scene documentation in one living archive. Pull up for the next one, catch the flyers from past nights, and tap in if your project belongs in the room.',
-          'Stay on the list',
-          'Lineup drops, flyer releases, venue updates, and last-minute location notes land here first.',
-          'Past sessions',
-          'Flyers, photos, and footage from the nights already burned into the wall.',
-          'Current rotation',
-          'Artists moving through the room right now, with photos and direct links into their worlds.',
-          'Affiliates + scene love',
-          'Friends, contributors, and collectives helping the Omaha underground stay loud.',
-          'Keep the room alive',
-          'Donations help cover artist support, gear, flyers, documentation, and future drops.'
-        ]);
-        return Object.fromEntries(Object.entries(payload || {}).map(([key, value]) => [key, stale.has(String(value || '').trim()) ? '' : value]));
+        const staleHashes = new Set(['xq2sbj', '13al2ge', 'e16nom', 'uj3kdj', '1eu7tbz', '1r568cr', 'we7bu3', '8z67hh', '1ri18oe', '1fuylcl', 'fj0z41', 'm0a1iq', 'qz6gh9']);
+        const textHash = (text) => {
+          let hash = 0;
+          for (const char of text) hash = ((hash * 31) + char.charCodeAt(0)) >>> 0;
+          return hash.toString(36);
+        };
+        return Object.fromEntries(Object.entries(payload || {}).map(([key, value]) => {
+          const text = String(value || '').trim();
+          return [key, staleHashes.has(textHash(text)) ? '' : value];
+        }));
       };
       const uploadFiles = async (client, prefix, files) => {
         const paths = [];
@@ -1256,6 +1260,7 @@
       const CURRENT_KEY = "soundwav-current-upcoming";
       const BUCKET = "soundwav-media";
       const q = (id) => document.getElementById(id);
+      const isAdminPage = document.body?.dataset?.appPage === "admin";
       const client = () => {
         if (window.__soundwavRescueClient) return window.__soundwavRescueClient;
         if (!window.supabase || !window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) return null;
@@ -1301,6 +1306,7 @@
         if (window.__soundwavState) window.__soundwavState.upcomingDrafts = next;
       };
       const current = () => {
+        if (!isAdminPage) return null;
         try {
           const parsed = JSON.parse(localStorage.getItem(CURRENT_KEY) || "null");
           return parsed ? normalizeUpcomingItem(parsed) : null;
@@ -1701,13 +1707,7 @@
       };
       const hydrateUpcomingFromSharedState = () => {
         const sharedUpcoming = window.__soundwavState?.upcomingShow;
-        const publicUpcoming = (() => {
-          try {
-            return JSON.parse(localStorage.getItem("soundwav-public-state") || "{}")?.upcomingShow || null;
-          } catch (_) {
-            return null;
-          }
-        })();
+        const publicUpcoming = null;
         const sourceCurrent = sharedUpcoming && sharedUpcoming.title
           ? normalizeUpcomingItem(sharedUpcoming)
           : (publicUpcoming && publicUpcoming.title ? normalizeUpcomingItem(publicUpcoming) : null);
@@ -1724,13 +1724,7 @@
       const reconcileUpcomingState = () => {
         const localCurrent = current();
         const sharedUpcoming = window.__soundwavState?.upcomingShow;
-        const publicUpcoming = (() => {
-          try {
-            return JSON.parse(localStorage.getItem("soundwav-public-state") || "{}")?.upcomingShow || null;
-          } catch (_) {
-            return null;
-          }
-        })();
+        const publicUpcoming = null;
         const candidate = localCurrent?.title
           ? normalizeUpcomingItem(localCurrent)
           : (sharedUpcoming?.title
@@ -3341,6 +3335,14 @@
         if (/^data:/i.test(path)) return path;
         return api.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
       };
+      const normalizeOwnerAffiliate = (api, item) => {
+        const imagePath = item?.image_path || item?.imagePath || "";
+        return {
+          ...item,
+          imagePath,
+          image: item?.image || (imagePath ? ownerStorageUrl(api, imagePath) : "")
+        };
+      };
       const uploadFiles = async (api, prefix, files) => {
         const paths = [];
         for (const file of Array.from(files || [])) {
@@ -3499,10 +3501,7 @@
         const { data, error } = await api.from("affiliates").select("*").order("created_at", { ascending: false });
         if (error) throw error;
         const next = (data && data.length)
-          ? data.map((item) => ({
-              ...item,
-              image: item.image_path ? ownerStorageUrl(api, item.image_path) : ""
-            }))
+          ? data.map((item) => normalizeOwnerAffiliate(api, item))
           : (window.__soundwavState?.affiliates || []);
         if (window.__soundwavState) window.__soundwavState.affiliates = next;
         setPublicCache({ affiliates: next });
@@ -3596,14 +3595,15 @@
       };
       window.__soundwavRefreshArtists = refreshArtists;
       const applyAffiliateState = (item, mode) => {
+        const normalizedItem = normalizeOwnerAffiliate(api, item);
         const current = Array.isArray(window.__soundwavState?.affiliates) ? window.__soundwavState.affiliates : (getPublicCache().affiliates || []);
         let next = current;
         if (mode === "delete") {
-          next = current.filter((entry) => entry.id !== item.id);
+          next = current.filter((entry) => entry.id !== normalizedItem.id);
         } else if (mode === "update") {
-          next = current.map((entry) => entry.id === item.id ? { ...entry, ...item } : entry);
+          next = current.map((entry) => entry.id === normalizedItem.id ? { ...entry, ...normalizedItem } : entry);
         } else {
-          next = [{ ...item }, ...current.filter((entry) => entry.id !== item.id)];
+          next = [{ ...normalizedItem }, ...current.filter((entry) => entry.id !== normalizedItem.id)];
         }
         if (window.__soundwavState) window.__soundwavState.affiliates = next;
         setPublicCache({ affiliates: next });
@@ -4370,6 +4370,7 @@
                 name: payload.name,
                 blurb: payload.blurb,
                 url: payload.url,
+                imagePath,
                 image: imagePath ? ownerStorageUrl(api, imagePath) : ""
               }, id ? "update" : "insert");
               const dbPayload = imagePath ? { ...payload, image_path: imagePath } : payload;
@@ -4459,7 +4460,8 @@
                 url: normalizeUrl(row.querySelector("[data-affiliate-url]")?.value || "")
               };
               if (!payload.name || !payload.blurb) throw new Error("Name and blurb are required.");
-              let imagePath = ((window.__soundwavState?.affiliates || []).find((entry) => entry.id === save.dataset.saveAffiliateId)?.image_path || "");
+              const existingAffiliate = (window.__soundwavState?.affiliates || []).find((entry) => entry.id === save.dataset.saveAffiliateId) || {};
+              let imagePath = existingAffiliate.image_path || existingAffiliate.imagePath || "";
               const imageFile = row.querySelector("[data-affiliate-image]")?.files?.[0];
               if (imageFile) {
                 const upload = await uploadFiles(api, `affiliates/${save.dataset.saveAffiliateId}`, [imageFile]);

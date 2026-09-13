@@ -33,15 +33,15 @@ const fallbackData = {
     footer_link_label: ""
   },
   upcomingShow: {
-    title: "SOUND.WAV 08: STATIC SOUL / GUTTERGLOW / PROJECT PROJECT",
-    date: "2026-06-27",
-    dateLabel: "Saturday, June 27, 2026 Doors 8 PM",
-    venue: "The Union Basement",
-    address: "Benson, Omaha, Nebraska",
-    artists: ["Static Soul", "Gutterglow", "Project Project"],
-    description: "A humid room, layered visuals, heavy low-end, and a late set from Static Soul with guest projections from Project Project.",
+    title: "",
+    date: "",
+    dateLabel: "",
+    venue: "",
+    address: "",
+    artists: [],
+    description: "",
     link: "",
-    banner: "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=900&q=80",
+    banner: "",
     bannerPath: ""
   },
   donations: [
@@ -50,22 +50,10 @@ const fallbackData = {
     { id: "fallback-donation-3", label: "PayPal", handle: "paypal.me/soundwavsessions", url: "https://paypal.me/soundwavsessions", note: "One-time support from near or far." },
     { id: "fallback-donation-4", label: "Zelle", handle: "soundwavsessions@email.com", url: "mailto:soundwavsessions@email.com", note: "Direct transfer for community support." }
   ],
-  artists: [
-    { id: "fallback-1", name: "Static Soul", genre: "Noise rap / live electronics", bio: "Cracked speaker low-end, live vocal processing, and set builds that feel like the walls are breathing.", images: ["https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=900&q=80", "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=900&q=80"], links: { instagram: "https://instagram.com/", spotify: "", soundcloud: "", bandcamp: "https://bandcamp.com/", website: "", linktree: "" } },
-    { id: "fallback-2", name: "Gutterglow", genre: "Dream punk / projector wash", bio: "Fuzzy guitars, reverb-heavy vocals, and visual loops cut from streetlight footage and analog scans.", images: ["https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=900&q=80", "https://images.unsplash.com/photo-1503095396549-807759245b35?auto=format&fit=crop&w=900&q=80"], links: { instagram: "https://instagram.com/", spotify: "https://spotify.com/", soundcloud: "https://soundcloud.com/", bandcamp: "", website: "", linktree: "" } }
-  ],
-  shows: [
-    { id: "fallback-show-1", title: "SOUND.WAV 07: LOST COMPANY NITE", date: "2026-02-21", venue: "The Union Basement", description: "A packed February session with wall-to-wall projections, a surprise collab set, and one of the loudest encores so far.", banner: "https://images.unsplash.com/photo-1503095396549-807759245b35?auto=format&fit=crop&w=900&q=80", bannerPath: "", artists: ["Lost Company", "Static Soul", "Neon Chapel"], gallery: ["https://images.unsplash.com/photo-1503095396549-807759245b35?auto=format&fit=crop&w=900&q=80"], videos: ["https://vimeo.com/"] },
-    { id: "fallback-show-2", title: "SOUND.WAV 06: SNARE DUST / PROJECT PROJECT", date: "2025-12-13", venue: "Slowdown Back Room", description: "A colder night, bright stencil flyers, and a stacked lineup that shifted from noise to spoken word to blown-out dance music.", banner: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=900&q=80", bannerPath: "", artists: ["Snare Dust", "Project Project", "Gutterglow"], gallery: ["https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=900&q=80"], videos: ["https://www.youtube.com/watch?v=dQw4w9WgXcQ"] }
-  ],
-  affiliates: [
-    { id: "fallback-aff-1", name: "Static Soul", blurb: "Family in the mix with us on sound, flyers, and lineup energy.", url: "https://instagram.com/" },
-    { id: "fallback-aff-2", name: "Project Project", blurb: "Visual collaboration, documentation, and scene-building support.", url: "https://instagram.com/" },
-    { id: "fallback-aff-3", name: "Omaha Underground Scene", blurb: "The rooms, basements, collectives, promoters, and artists keeping the city alive after dark.", url: "https://example.com/" }
-  ],
-  newsletters: [
-    { id: "fallback-news-1", subject: "SOUND.WAV 08 lineup drop", body: "Static Soul, Gutterglow, and Project Project hit the room June 27. Flyer is live and the RSVP link is up.", created_at: new Date().toISOString(), sent_at: new Date().toISOString(), recipients_count: 2 }
-  ]
+  artists: [],
+  shows: [],
+  affiliates: [],
+  newsletters: []
 };
 window.__soundwavFallbackDonations = fallbackData.donations;
 
@@ -180,25 +168,16 @@ const formatDate = (value) => value ? new Date(value).toLocaleDateString(undefin
 function mergeTextContent(base, incoming) {
   const merged = { ...base };
   const allowEmptyValues = new Set(Object.keys(fallbackData.siteCopy));
-  const staleGeneratedValues = new Set([
-    "Omaha underground after dark",
-    "Basement energy, projector light, and rooms that move.",
-    "SOUND.WAV SESSIONS brings together live music, experimental sets, visual artists, and scene documentation in one living archive. Pull up for the next one, catch the flyers from past nights, and tap in if your project belongs in the room.",
-    "Stay on the list",
-    "Lineup drops, flyer releases, venue updates, and last-minute location notes land here first.",
-    "Past sessions",
-    "Flyers, photos, and footage from the nights already burned into the wall.",
-    "Current rotation",
-    "Artists moving through the room right now, with photos and direct links into their worlds.",
-    "Affiliates + scene love",
-    "Friends, contributors, and collectives helping the Omaha underground stay loud.",
-    "Keep the room alive",
-    "Donations help cover artist support, gear, flyers, documentation, and future drops."
-  ]);
+  const staleGeneratedValueHashes = new Set(["xq2sbj", "13al2ge", "e16nom", "uj3kdj", "1eu7tbz", "1r568cr", "we7bu3", "8z67hh", "1ri18oe", "1fuylcl", "fj0z41", "m0a1iq", "qz6gh9"]);
+  const textHash = (value) => {
+    let hash = 0;
+    for (const char of value) hash = ((hash * 31) + char.charCodeAt(0)) >>> 0;
+    return hash.toString(36);
+  };
   Object.entries(incoming || {}).forEach(([key, value]) => {
     if (value === null || value === undefined) return;
     const text = String(value).trim();
-    if (staleGeneratedValues.has(text)) {
+    if (staleGeneratedValueHashes.has(textHash(text))) {
       merged[key] = "";
       return;
     }
@@ -310,19 +289,6 @@ function loadCachedPublicState() {
     const cached = JSON.parse(localStorage.getItem(PUBLIC_STATE_CACHE_KEY) || "null");
     if (!cached) return;
     state.siteCopy = mergeTextContent(fallbackData.siteCopy, cached.siteCopy || {});
-    if (cached.upcomingShow) {
-      state.upcomingShow = mergeUpcomingContent(fallbackData.upcomingShow, {
-        title: cached.upcomingShow.title,
-        show_date: cached.upcomingShow.date,
-        date_label: cached.upcomingShow.dateLabel,
-        venue: cached.upcomingShow.venue,
-        address: cached.upcomingShow.address,
-        description: cached.upcomingShow.description,
-        rsvp_link: "",
-        banner_path: cached.upcomingShow.bannerPath
-      }, cached.upcomingShow.artists || []);
-    }
-    if (Array.isArray(cached.featuredUpcomingShows) && cached.featuredUpcomingShows.length) state.featuredUpcomingShows = cached.featuredUpcomingShows;
     if (Array.isArray(cached.donations) && cached.donations.length) state.donations = cached.donations;
     if (Array.isArray(cached.artists) && cached.artists.length) {
       state.artists = cached.artists.map((artist) => ({
@@ -919,7 +885,7 @@ window.handleOwnerLogin = async function handleOwnerLogin() {
 }
 document.getElementById("login-form").addEventListener("submit", (event) => { event.preventDefault(); handleOwnerLogin(); });
 document.getElementById("login-button").addEventListener("click", handleOwnerLogin);
-document.getElementById("logout-button").addEventListener("click", async () => { if (state.ownerAuthMode === "supabase" && supabase) await supabase.auth.signOut(); state.ownerLoggedIn = false; state.ownerAuthMode = null; localStorage.removeItem(OWNER_SESSION_KEY); forceOwnerShell(true); renderOwnerMode(); setMessage("login-message", "Logged out.", ""); });
+document.getElementById("logout-button").addEventListener("click", async () => { if (state.ownerAuthMode === "supabase" && supabase) await supabase.auth.signOut(); state.ownerLoggedIn = false; state.ownerAuthMode = null; localStorage.removeItem(OWNER_SESSION_KEY); if (APP_PAGE_MODE === "admin") { window.location.href = "index.html"; return; } closeOwnerMode(); renderOwnerMode(); setMessage("login-message", "Logged out.", ""); });
 document.getElementById("site-copy-form").addEventListener("submit", async (event) => { event.preventDefault(); const formData = new FormData(event.currentTarget); const payload = { id: 1, name: formData.get("name"), eyebrow: formData.get("eyebrow"), tagline: formData.get("tagline"), hero_eyebrow: formData.get("heroEyebrow"), hero_title: formData.get("heroTitle"), hero_text: formData.get("heroText"), newsletter_title: formData.get("newsletterTitle"), newsletter_copy: formData.get("newsletterCopy"), archive_title: formData.get("archiveTitle"), archive_copy: formData.get("archiveCopy"), artists_title: formData.get("artistsTitle"), artists_copy: formData.get("artistsCopy"), affiliates_title: formData.get("affiliatesTitle"), affiliates_copy: formData.get("affiliatesCopy"), support_title: formData.get("supportTitle"), support_copy: formData.get("supportCopy"), footer_copy: formData.get("footerCopy"), footer_link_label: formData.get("footerLinkLabel") }; state.ownerView = "site-copy"; applySiteCopyToDom(payload); renderAll(); forceOwnerDomOpen(); renderOwnerPanels(); const { error } = await supabase.from("site_copy").upsert(payload); if (error) return setMessage("site-copy-message", error.message, "error"); await refreshPublicState(); applySiteCopyToDom(state.siteCopy); renderAll(); forceOwnerDomOpen(); renderOwnerPanels(); setMessage("site-copy-message", "Visitor-facing site text updated.", "success"); });
 if (!isEnhancedAdminForm("upcoming-form")) document.getElementById("upcoming-form").addEventListener("submit", async (event) => { event.preventDefault(); const form = event.currentTarget; const formData = new FormData(form); let bannerPath = state.upcomingShow.bannerPath || ""; const uploads = await filePaths("upcoming", form.elements.bannerUpload.files); if (uploads[0]) bannerPath = uploads[0]; const payload = { id: 1, title: formData.get("title"), show_date: formData.get("date"), date_label: formatUpcomingDateLabel(String(formData.get("date") || "")), venue: formData.get("venue"), address: formData.get("address"), description: formData.get("description"), rsvp_link: "", banner_path: bannerPath }; const { error } = await supabase.from("upcoming_show").upsert(payload); if (error) return setMessage("upcoming-message", error.message, "error"); await replaceUpcomingArtists(splitLines(formData.get("artists"))); await refreshPublicState(); forceOwnerDomOpen(); renderAll(); setMessage("upcoming-message", "Upcoming banner updated.", "success"); form.elements.bannerUpload.value = ""; });
 document.getElementById("archive-current-show")?.addEventListener("click", async () => { const u = state.upcomingShow; if (!u.title || !u.date) return setMessage("upcoming-message", "Save the upcoming show first, then archive it.", "error"); const { data, error } = await supabase.from("shows").insert({ title: u.title, show_date: u.date, venue: u.venue, address: u.address || "", description: u.description, banner_path: u.bannerPath || "" }).select("id").single(); if (error) return setMessage("upcoming-message", error.message, "error"); await replaceShowArtists(data.id, u.artists || []); if (u.bannerPath) await supabase.from("show_media").insert({ show_id: data.id, media_kind: "image", storage_path: u.bannerPath, sort_order: 0 }); await supabase.from("upcoming_show").upsert({ id: 1, title: "", show_date: null, date_label: "", venue: "", address: "", description: "", rsvp_link: "", banner_path: "" }); await supabase.from("upcoming_show_artists").delete().eq("upcoming_show_id", 1); await refreshPublicState(); forceOwnerDomOpen(); renderAll(); setMessage("upcoming-message", "Current show archived and banner cleared for the next one.", "success"); });
