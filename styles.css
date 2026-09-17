@@ -210,7 +210,8 @@ textarea { resize: vertical; }
 .owner-nav { flex-direction: column; }
 .owner-panel { background: var(--panel-alt); }
 .site-footer { padding: 0 0 2rem; display: flex; justify-content: space-between; gap: 1rem; color: var(--muted); }
-.site-footer.is-empty { display: none; }
+.site-footer.is-empty:not(:has(.admin-login-link)) { display: none; }
+.site-footer .admin-login-link { color: var(--muted); text-decoration: underline; text-underline-offset: .2em; }
 .hidden { display: none !important; }
 .featured-upcoming-list { display: grid; gap: 1rem; }
 .featured-upcoming-card .poster-frame { transform: none; }

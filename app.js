@@ -559,6 +559,7 @@ function fillOwnerForms() {
 }
 function renderOwnerPanels() { document.querySelectorAll(".owner-tab").forEach((button) => button.classList.toggle("active", button.dataset.ownerView === state.ownerView)); document.querySelectorAll("[data-owner-panel]").forEach((panel) => panel.classList.toggle("hidden", panel.dataset.ownerPanel !== state.ownerView)); }
 function forceOwnerShell(isOpen) {
+  isOpen = APP_PAGE_MODE === "admin" && isOpen;
   state.ownerShellOpen = isOpen;
   q("public-shell")?.classList.toggle("hidden", isOpen);
   q("owner-shell")?.classList.toggle("hidden", !isOpen);
@@ -713,7 +714,7 @@ if (supabase) {
     state.ownerLoggedIn = isAdmin;
     state.ownerAuthMode = isAdmin ? "supabase" : null;
     if (isAdmin) {
-      state.ownerShellOpen = true;
+      state.ownerShellOpen = APP_PAGE_MODE === "admin";
       try {
         await loadOwnerData();
       } catch (error) {
