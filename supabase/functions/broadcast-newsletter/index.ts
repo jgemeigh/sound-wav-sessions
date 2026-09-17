@@ -7,10 +7,6 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const TEST_RECIPIENTS = [
-  "j.g.emeigh@gmail.com",
-];
-
 const RECIPIENT_CHUNK_SIZE = 50;
 const GMAIL_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GMAIL_SEND_URL = "https://gmail.googleapis.com/gmail/v1/users/me/messages/send";
@@ -241,20 +237,26 @@ serve(async (request) => {
     const supabaseUrl = requireEnv("SUPABASE_URL");
     const supabaseServiceRoleKey = requireEnv("SUPABASE_SERVICE_ROLE_KEY");
     const fromEmail = Deno.env.get("GMAIL_SENDER_EMAIL") || "sound.wavsessions@gmail.com";
+    const authorization = request.headers.get("Authorization") || "";
+    const accessToken = authorization.replace(/^Bearer\s+/i, "").trim();
+    if (!accessToken) return json({ error: "Authentication required" }, { status: 401 });
+
+    const serviceClient = createClient(supabaseUrl, supabaseServiceRoleKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const { data: userData, error: userError } = await serviceClient.auth.getUser(accessToken);
+    if (userError || userData.user?.app_metadata?.is_admin !== true) {
+      return json({ error: "Admin access required" }, { status: 403 });
+    }
 
     const body = await request.json().catch(() => ({}));
     const mode = body?.mode === "test" ? "test" : "live";
     const newsletterId = String(body?.newsletterId || "").trim();
-    const suppliedSiteUrl = String(body?.siteUrl || "").trim();
-    const siteUrl = /^https?:\/\//i.test(suppliedSiteUrl)
-      ? suppliedSiteUrl.replace(/\/+$/, "")
-      : (Deno.env.get("SITE_URL") || "https://example.com").replace(/\/+$/, "");
+    const siteUrl = (Deno.env.get("SITE_URL") || "https://sound-wav-sessions.netlify.app").replace(/\/+$/, "");
 
     if (!newsletterId) {
       return json({ error: "newsletterId is required" }, { status: 400 });
     }
-
-    const serviceClient = createClient(supabaseUrl, supabaseServiceRoleKey);
 
     const { data: newsletter, error: newsletterError } = await serviceClient
       .from("newsletters")
@@ -280,8 +282,12 @@ serve(async (request) => {
       .eq("upcoming_show_id", 1)
       .order("sort_order");
 
+    const testRecipients = (Deno.env.get("NEWSLETTER_TEST_RECIPIENTS") || fromEmail)
+      .split(",")
+      .map((email) => email.trim().toLowerCase())
+      .filter(Boolean);
     const allRecipients = mode === "test"
-      ? TEST_RECIPIENTS
+      ? testRecipients
       : ((await serviceClient.from("subscribers").select("email").eq("active", true)).data || [])
           .map((row) => String(row.email || "").trim().toLowerCase())
           .filter(Boolean);
@@ -301,11 +307,11 @@ serve(async (request) => {
 
     const chunks = chunk(uniqueRecipients, RECIPIENT_CHUNK_SIZE);
     const responses: unknown[] = [];
-    const accessToken = await getGmailAccessToken();
+    const gmailAccessToken = await getGmailAccessToken();
 
     for (const recipientChunk of chunks) {
       const responseBody = await sendGmailMessage({
-        accessToken,
+        accessToken: gmailAccessToken,
         fromEmail,
         to: recipientChunk,
         subject: newsletter.subject,

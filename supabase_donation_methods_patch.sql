@@ -24,9 +24,9 @@ on public.donation_methods for select using (true);
 
 drop policy if exists "authenticated manage donation_methods" on public.donation_methods;
 create policy "authenticated manage donation_methods"
-on public.donation_methods for all
-using (auth.role() = 'authenticated')
-with check (auth.role() = 'authenticated');
+on public.donation_methods for all to authenticated
+using (coalesce((auth.jwt()->'app_metadata'->>'is_admin')::boolean, false))
+with check (coalesce((auth.jwt()->'app_metadata'->>'is_admin')::boolean, false));
 
 insert into public.donation_methods (label, handle, url, note, sort_order)
 select * from (

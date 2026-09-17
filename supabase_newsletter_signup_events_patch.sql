@@ -22,6 +22,6 @@ begin
       on public.newsletter_signup_events
       for select
       to authenticated
-      using (true);
+      using (coalesce((auth.jwt()->'app_metadata'->>'is_admin')::boolean, false));
   end if;
 end $$;

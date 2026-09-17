@@ -36,7 +36,15 @@ serve(async (request) => {
   try {
     const supabaseUrl = requireEnv("SUPABASE_URL");
     const serviceRoleKey = requireEnv("SUPABASE_SERVICE_ROLE_KEY");
-    const client = createClient(supabaseUrl, serviceRoleKey);
+    const client = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const accessToken = (request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
+    if (!accessToken) return json({ error: "Authentication required" }, { status: 401 });
+    const { data: userData, error: userError } = await client.auth.getUser(accessToken);
+    if (userError || userData.user?.app_metadata?.is_admin !== true) {
+      return json({ error: "Admin access required" }, { status: 403 });
+    }
 
     const [siteCopyRes, showsRes, subscribersRes] = await Promise.all([
       client.from("site_copy").select("id").limit(1),

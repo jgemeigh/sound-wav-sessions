@@ -436,10 +436,6 @@
 
       <script>
     (function () {
-      const LOCAL_OWNER_EMAIL = 'owner@soundwav.local';
-      const LOCAL_OWNER_PASSWORD = 'project2';
-      const ADMIN_ALIAS_DOMAIN = 'soundwav-admin.example.com';
-      const OWNER_KEY = 'soundwav-owner-session';
       const q = (id) => document.getElementById(id);
       const setLoginMessage = (text, tone) => {
         const node = q('login-message');
@@ -484,18 +480,10 @@
         const form = q('login-form');
         if (!form) return false;
         const formData = new FormData(form);
-        const rawLogin = String(formData.get('email') || '').trim().toLowerCase();
-        const email = rawLogin.includes('@') ? rawLogin : `${rawLogin}@${ADMIN_ALIAS_DOMAIN}`;
+        const email = String(formData.get('email') || '').trim().toLowerCase();
         const password = String(formData.get('password') || '');
-        if (!rawLogin || !password) {
-          setLoginMessage('Enter your email or username and password.', 'error');
-          return false;
-        }
-        if (email === LOCAL_OWNER_EMAIL && password === LOCAL_OWNER_PASSWORD) {
-          localStorage.setItem(OWNER_KEY, 'demo');
-          showOwnerWorkspace();
-          setLoginMessage('Local admin unlocked.', 'success');
-          form.reset();
+        if (!email || !password) {
+          setLoginMessage('Enter your email and password.', 'error');
           return false;
         }
         const client = getClient();
@@ -514,7 +502,11 @@
             setLoginMessage('Login returned no active session.', 'error');
             return false;
           }
-          localStorage.setItem(OWNER_KEY, 'supabase');
+          if (data.user?.app_metadata?.is_admin !== true) {
+            await client.auth.signOut();
+            setLoginMessage('This account is not authorized for site administration.', 'error');
+            return false;
+          }
           showOwnerWorkspace();
           setLoginMessage('Supabase login successful.', 'success');
           form.reset();
@@ -529,7 +521,7 @@
         if (client) {
           try { await client.auth.signOut(); } catch (_) {}
         }
-        localStorage.removeItem(OWNER_KEY);
+        localStorage.removeItem('soundwav-owner-session');
         if (document.body?.dataset?.appPage === 'admin') {
           window.location.href = 'index.html';
           return false;
@@ -539,11 +531,14 @@
         return false;
       };
       document.addEventListener('DOMContentLoaded', async () => {
-        if (localStorage.getItem(OWNER_KEY)) {
-          showOwnerWorkspace();
-        }
-        q('owner-toggle')?.addEventListener('click', () => {
-          if (localStorage.getItem(OWNER_KEY)) showOwnerWorkspace();
+        localStorage.removeItem('soundwav-owner-session');
+        const initialClient = getClient();
+        const { data: initialAuth } = initialClient ? await initialClient.auth.getUser() : { data: {} };
+        if (initialAuth.user?.app_metadata?.is_admin === true) showOwnerWorkspace();
+        q('owner-toggle')?.addEventListener('click', async () => {
+          const client = getClient();
+          const { data } = client ? await client.auth.getUser() : { data: {} };
+          if (data.user?.app_metadata?.is_admin === true) showOwnerWorkspace();
           else showOwnerLogin();
         });
         q('back-to-site')?.addEventListener('click', showPublicSite);
@@ -568,7 +563,7 @@
   </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js?v=20260427a"></script>
-  <script src="app.js?v=20260913a"></script>
+  <script src="app.js?v=20260916a"></script>
   <script id="soundwav-upcoming-manager">
     (() => {
       return;
@@ -3567,13 +3562,18 @@
         return data;
       };
       const startGmailReconnect = async () => {
+        const api = client();
+        const { data: sessionData } = api ? await api.auth.getSession() : { data: {} };
+        const accessToken = sessionData?.session?.access_token || "";
+        if (!accessToken) return setNewsletterMessage("Log in again before reconnecting Gmail.", "error");
         const statusUrl = `${window.SUPABASE_URL}/functions/v1/gmail-oauth-callback?status=1`;
         setNewsletterMessage("Checking Gmail connection...", "");
         try {
           const response = await fetch(statusUrl, {
             method: "GET",
             headers: {
-              apikey: window.SUPABASE_ANON_KEY
+              apikey: window.SUPABASE_ANON_KEY,
+              Authorization: `Bearer ${accessToken}`
             }
           });
           const result = await response.json().catch(() => ({}));
@@ -3590,8 +3590,12 @@
           setNewsletterMessage("Could not verify Gmail status. Reconnect was not started.", "error");
           return;
         }
-        const reconnectUrl = `${window.SUPABASE_URL}/functions/v1/gmail-oauth-callback`;
-        window.open(reconnectUrl, "_blank", "noopener,noreferrer");
+        const startResponse = await fetch(`${window.SUPABASE_URL}/functions/v1/gmail-oauth-callback?start=1`, {
+          headers: { apikey: window.SUPABASE_ANON_KEY, Authorization: `Bearer ${accessToken}` }
+        });
+        const startResult = await startResponse.json().catch(() => ({}));
+        if (!startResponse.ok || !startResult.authUrl) return setNewsletterMessage(startResult.error || "Could not start Gmail reconnect.", "error");
+        window.open(startResult.authUrl, "_blank", "noopener,noreferrer");
         setNewsletterMessage("Complete the Google permission flow in the new tab, then paste the new refresh token back here.", "");
       };
       window.__soundwavStartGmailReconnect = (event) => {
@@ -3888,6 +3892,7 @@
           console.error(error);
         }
       };
+      const escapeOwnerHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
       const renderOwnerDataPanels = () => {
         const publicCache = getPublicCache();
         const ownerCache = getOwnerCache();
@@ -3925,7 +3930,7 @@
                 const locked = isEditing ? "" : " disabled";
                 const rowMode = isEditing ? "edit" : "view";
                 const joinedLabel = item.created_at ? new Date(item.created_at).toLocaleString() : "Unknown";
-                return '<div class="subscriber-sheet-row" data-subscriber-row-id="' + (item.id || "") + '" data-subscriber-row-mode="' + rowMode + '"><div class="subscriber-sheet-cell"><input type="text" data-subscriber-name value="' + ((item.name || "").replace(/"/g, '&quot;')) + '" placeholder="Name"' + locked + '><small>Joined ' + joinedLabel + '</small></div><input type="email" data-subscriber-email value="' + ((item.email || "").replace(/"/g, '&quot;')) + '" placeholder="Email"' + locked + '><select data-subscriber-active' + locked + '><option value="true"' + (item.active ? ' selected' : '') + '>Subscribed</option><option value="false"' + (!item.active ? ' selected' : '') + '>Opted out</option></select><div class="list-actions">' + (isEditing ? ('<button class="mini-button" type="button" data-save-subscriber-id="' + (item.id || "") + '">Save</button>') : ('<button class="mini-button" type="button" data-edit-subscriber-id="' + (item.id || "") + '">Edit</button>')) + '<button class="mini-button danger" type="button" data-delete-subscriber-id="' + (item.id || "") + '">Remove</button></div></div>';
+                return '<div class="subscriber-sheet-row" data-subscriber-row-id="' + escapeOwnerHtml(item.id || "") + '" data-subscriber-row-mode="' + rowMode + '"><div class="subscriber-sheet-cell"><input type="text" data-subscriber-name value="' + escapeOwnerHtml(item.name || "") + '" placeholder="Name"' + locked + '><small>Joined ' + escapeOwnerHtml(joinedLabel) + '</small></div><input type="email" data-subscriber-email value="' + escapeOwnerHtml(item.email || "") + '" placeholder="Email"' + locked + '><select data-subscriber-active' + locked + '><option value="true"' + (item.active ? ' selected' : '') + '>Subscribed</option><option value="false"' + (!item.active ? ' selected' : '') + '>Opted out</option></select><div class="list-actions">' + (isEditing ? ('<button class="mini-button" type="button" data-save-subscriber-id="' + escapeOwnerHtml(item.id || "") + '">Save</button>') : ('<button class="mini-button" type="button" data-edit-subscriber-id="' + escapeOwnerHtml(item.id || "") + '">Edit</button>')) + '<button class="mini-button danger" type="button" data-delete-subscriber-id="' + escapeOwnerHtml(item.id || "") + '">Remove</button></div></div>';
               }).join("") + '</div>'
             : '<article class="admin-list-item"><p>No subscribers yet.</p></article>';
         }
@@ -3964,7 +3969,7 @@
         const submissionList = q("submission-list");
         if (submissionList) {
           submissionList.innerHTML = submissions.length
-            ? submissions.map((item) => '<article class="admin-list-item"><p><strong>' + item.name + '</strong> <span class="eyebrow">' + item.status + '</span></p><p>' + (item.genre || "") + (item.city ? " / " + item.city : "") + '</p><p>' + item.email + (item.phone ? " / " + item.phone : "") + '</p><p>' + (item.links || "No links provided") + '</p><p>' + (item.pitch || "") + '</p><div class="list-actions"><button class="mini-button" type="button" data-submission-id="' + item.id + '" data-status="Reviewed">Mark reviewed</button><button class="mini-button ghost" type="button" data-submission-id="' + item.id + '" data-status="Booked">Mark booked</button><button class="mini-button danger" type="button" data-delete-submission-id="' + item.id + '">Delete</button></div></article>').join("")
+            ? submissions.map((item) => '<article class="admin-list-item"><p><strong>' + escapeOwnerHtml(item.name) + '</strong> <span class="eyebrow">' + escapeOwnerHtml(item.status) + '</span></p><p>' + escapeOwnerHtml(item.genre || "") + (item.city ? " / " + escapeOwnerHtml(item.city) : "") + '</p><p>' + escapeOwnerHtml(item.email) + (item.phone ? " / " + escapeOwnerHtml(item.phone) : "") + '</p><p>' + escapeOwnerHtml(item.links || "No links provided") + '</p><p>' + escapeOwnerHtml(item.pitch || "") + '</p><div class="list-actions"><button class="mini-button" type="button" data-submission-id="' + escapeOwnerHtml(item.id) + '" data-status="Reviewed">Mark reviewed</button><button class="mini-button ghost" type="button" data-submission-id="' + escapeOwnerHtml(item.id) + '" data-status="Booked">Mark booked</button><button class="mini-button danger" type="button" data-delete-submission-id="' + escapeOwnerHtml(item.id) + '">Delete</button></div></article>').join("")
             : '<article class="admin-list-item"><p>No performer submissions yet.</p></article>';
         }
       };

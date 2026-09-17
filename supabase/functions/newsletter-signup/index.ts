@@ -35,16 +35,25 @@ serve(async (request) => {
     }
 
     const body = await request.json().catch(() => ({}));
+    const action = body?.action === "unsubscribe" ? "unsubscribe" : "subscribe";
     const email = String(body?.email || "").trim().toLowerCase();
-    const rawName = String(body?.name || "").trim();
+    const rawName = String(body?.name || "").trim().slice(0, 120);
     const fallbackName = email.includes("@") ? email.split("@")[0] : "Subscriber";
     const name = rawName || fallbackName;
 
-    if (!email) return json({ error: "Email is required." }, { status: 400 });
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || email.length > 254) {
+      return json({ error: "A valid email is required." }, { status: 400 });
+    }
 
     const admin = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
+
+    if (action === "unsubscribe") {
+      const result = await admin.from("subscribers").update({ active: false }).eq("email", email);
+      if (result.error) return json({ error: "Could not update subscription." }, { status: 400 });
+      return json({ ok: true });
+    }
 
     let result = await admin.from("subscribers").insert({ email, name, active: true });
     if (result.error && (result.error.code === "23505" || /duplicate key/i.test(result.error.message || ""))) {
@@ -52,10 +61,10 @@ serve(async (request) => {
       result = await admin.from("subscribers").update(updatePayload).eq("email", email);
     }
     if (result.error) {
-      return json({ error: result.error.message || "Could not save subscriber." }, { status: 400 });
+      return json({ error: "Could not save subscriber." }, { status: 400 });
     }
 
-    return json({ ok: true, email, name });
+    return json({ ok: true });
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : "Unexpected error." }, { status: 500 });
   }

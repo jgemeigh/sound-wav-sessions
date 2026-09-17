@@ -41,28 +41,19 @@ alter table public.upcoming_draft_artists enable row level security;
 drop policy if exists "authenticated manage upcoming_drafts" on public.upcoming_drafts;
 create policy "authenticated manage upcoming_drafts"
 on public.upcoming_drafts
-for all
-using (auth.role() = 'authenticated')
-with check (auth.role() = 'authenticated');
+for all to authenticated
+using (coalesce((auth.jwt()->'app_metadata'->>'is_admin')::boolean, false))
+with check (coalesce((auth.jwt()->'app_metadata'->>'is_admin')::boolean, false));
 
 drop policy if exists "authenticated manage upcoming_draft_artists" on public.upcoming_draft_artists;
 create policy "authenticated manage upcoming_draft_artists"
 on public.upcoming_draft_artists
-for all
-using (auth.role() = 'authenticated')
-with check (auth.role() = 'authenticated');
+for all to authenticated
+using (coalesce((auth.jwt()->'app_metadata'->>'is_admin')::boolean, false))
+with check (coalesce((auth.jwt()->'app_metadata'->>'is_admin')::boolean, false));
 
 drop policy if exists "public read upcoming_drafts" on public.upcoming_drafts;
-create policy "public read upcoming_drafts"
-on public.upcoming_drafts
-for select
-using (true);
-
 drop policy if exists "public read upcoming_draft_artists" on public.upcoming_draft_artists;
-create policy "public read upcoming_draft_artists"
-on public.upcoming_draft_artists
-for select
-using (true);
 
 update public.newsletters
 set is_current = true

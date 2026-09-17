@@ -157,11 +157,12 @@ function initSoundwaveBackground() {
 
 const q = (id) => document.getElementById(id);
 const splitLines = (value) => String(value || "").split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
+const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
 const setMessage = (id, text, tone = "") => { const node = q(id); if (!node) return; node.textContent = text; node.style.color = tone === "error" ? "#ff8a80" : tone === "success" ? "#dbff4a" : ""; };
 const formatUpcomingDateLabel = (value) => value ? new Date(value + "T12:00:00").toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" }) : "";
 const requireSupabase = (messageId = "login-message") => {
   if (supabase) return true;
-  setMessage(messageId, "Live data is unavailable until the Supabase script loads. The sample site is still usable locally.", "error");
+  setMessage(messageId, "Live data is unavailable until the Supabase script loads.", "error");
   return false;
 };
 const formatDate = (value) => value ? new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" }) : "";
@@ -316,13 +317,11 @@ async function filePaths(prefix, files) {
   return uploads;
 }
 async function loadPublicData() {
-  const [siteRes, upcomingRes, upcomingArtistsRes, donationsRes, upcomingDraftsRes, upcomingDraftArtistsRes, artistsRes, artistImagesRes, showsRes, showArtistsRes, showMediaRes, affiliatesRes, newslettersRes] = await Promise.all([
+  const [siteRes, upcomingRes, upcomingArtistsRes, donationsRes, artistsRes, artistImagesRes, showsRes, showArtistsRes, showMediaRes, affiliatesRes, newslettersRes] = await Promise.all([
     supabase.from("site_copy").select("*").eq("id", 1).maybeSingle(),
     supabase.from("upcoming_show").select("*").eq("id", 1).maybeSingle(),
     supabase.from("upcoming_show_artists").select("*").eq("upcoming_show_id", 1).order("sort_order"),
     supabase.from("donation_methods").select("*").order("sort_order").then((res) => res).catch(() => ({ data: [], error: null })),
-    supabase.from("upcoming_drafts").select("*").order("show_date", { ascending: true }),
-    supabase.from("upcoming_draft_artists").select("*").order("sort_order"),
     supabase.from("artists").select("*").order("created_at", { ascending: false }),
     supabase.from("artist_images").select("*").order("sort_order"),
     supabase.from("shows").select("*").order("show_date", { ascending: false }),
@@ -333,13 +332,9 @@ async function loadPublicData() {
   ]);
   if (siteRes.error) throw siteRes.error;
   if (upcomingRes.error) throw upcomingRes.error;
-  if (upcomingDraftsRes.error) throw upcomingDraftsRes.error;
-  if (upcomingDraftArtistsRes.error) throw upcomingDraftArtistsRes.error;
   state.siteCopy = mergeTextContent(fallbackData.siteCopy, siteRes.data || {});
   state.upcomingShow = mergeUpcomingContent(fallbackData.upcomingShow, upcomingRes.data || {}, (upcomingArtistsRes.data || []).map((item) => item.artist_name));
   state.donations = (donationsRes.data || []).length ? (donationsRes.data || []) : fallbackData.donations;
-  const artistsByDraft = new Map();
-  (upcomingDraftArtistsRes.data || []).forEach((item) => { if (!artistsByDraft.has(item.upcoming_draft_id)) artistsByDraft.set(item.upcoming_draft_id, []); artistsByDraft.get(item.upcoming_draft_id).push(item.artist_name); });
   state.featuredUpcomingShows = state.upcomingShow?.title ? [state.upcomingShow] : [];
   const imagesByArtist = new Map();
   (artistImagesRes.data || []).forEach((item) => {
@@ -544,8 +539,8 @@ function renderNewsletters() {
   }
   if (!isEnhancedAdminRegion("campaign-log") && q("campaign-log")) q("campaign-log").innerHTML = state.newsletters.map((item, index) => `<article class="admin-list-item"><p><strong>${item.subject}</strong></p><p>${item.body}</p><p>${item.sent_at ? `Broadcast ${formatDate(item.sent_at)} to ${item.recipients_count} subscribers.` : "Saved draft."}</p><div class="list-actions"><button class="mini-button" type="button" data-edit-newsletter-id="${item.id}">Edit</button>${index === 0 ? `<button class="mini-button ghost" type="button" data-broadcast-newsletter-id="${item.id}">${item.sent_at ? "Broadcast again" : "Broadcast"}</button>` : ""}<button class="mini-button danger" type="button" data-delete-newsletter-id="${item.id}">Delete</button></div></article>`).join("");
 }
-function renderSubscribers() { if (!isEnhancedAdminRegion("subscriber-list") && q("subscriber-list")) q("subscriber-list").innerHTML = state.subscribers.map((item) => `<article class="admin-list-item"><p><strong>${item.name}</strong></p><p>${item.email}</p><p>${item.active ? "Subscribed" : "Opted out"}</p><div class="list-actions"><button class="mini-button danger" type="button" data-delete-subscriber-id="${item.id}">Remove</button></div></article>`).join(""); }
-function renderSubmissions() { if (!isEnhancedAdminRegion("submission-list") && q("submission-list")) q("submission-list").innerHTML = state.submissions.map((item) => `<article class="admin-list-item"><p><strong>${item.name}</strong> <span class="eyebrow">${item.status}</span></p><p>${item.genre} / ${item.city}</p><p>${item.email} / ${item.phone}</p><p>${item.links || "No links provided"}</p><p>${item.pitch}</p><div class="list-actions"><button class="mini-button" type="button" data-submission-id="${item.id}" data-status="Reviewed">Mark reviewed</button><button class="mini-button ghost" type="button" data-submission-id="${item.id}" data-status="Booked">Mark booked</button><button class="mini-button danger" type="button" data-delete-submission-id="${item.id}">Delete</button></div></article>`).join(""); }
+function renderSubscribers() { if (!isEnhancedAdminRegion("subscriber-list") && q("subscriber-list")) q("subscriber-list").innerHTML = state.subscribers.map((item) => `<article class="admin-list-item"><p><strong>${escapeHtml(item.name)}</strong></p><p>${escapeHtml(item.email)}</p><p>${item.active ? "Subscribed" : "Opted out"}</p><div class="list-actions"><button class="mini-button danger" type="button" data-delete-subscriber-id="${escapeHtml(item.id)}">Remove</button></div></article>`).join(""); }
+function renderSubmissions() { if (!isEnhancedAdminRegion("submission-list") && q("submission-list")) q("submission-list").innerHTML = state.submissions.map((item) => `<article class="admin-list-item"><p><strong>${escapeHtml(item.name)}</strong> <span class="eyebrow">${escapeHtml(item.status)}</span></p><p>${escapeHtml(item.genre)} / ${escapeHtml(item.city)}</p><p>${escapeHtml(item.email)} / ${escapeHtml(item.phone)}</p><p>${escapeHtml(item.links || "No links provided")}</p><p>${escapeHtml(item.pitch)}</p><div class="list-actions"><button class="mini-button" type="button" data-submission-id="${escapeHtml(item.id)}" data-status="Reviewed">Mark reviewed</button><button class="mini-button ghost" type="button" data-submission-id="${escapeHtml(item.id)}" data-status="Booked">Mark booked</button><button class="mini-button danger" type="button" data-delete-submission-id="${escapeHtml(item.id)}">Delete</button></div></article>`).join(""); }
 function renderOwnerLists() {
   if (!isEnhancedAdminRegion("artist-admin-list")) {
     q("artist-admin-list").innerHTML = state.artists.map((item) => `<article class="admin-list-item"><p><strong>${item.name}</strong></p><p>${item.genre}</p><div class="list-actions"><button class="mini-button" type="button" data-edit-artist-id="${item.id}">Edit</button><button class="mini-button danger" type="button" data-delete-artist-id="${item.id}">Delete</button></div></article>`).join("");
@@ -683,32 +678,23 @@ async function replaceUpcomingArtists(names) { await supabase.from("upcoming_sho
 async function replaceShowArtists(showId, names) { await supabase.from("show_artists").delete().eq("show_id", showId); if (!names.length) return; await supabase.from("show_artists").insert(names.map((artist_name, index) => ({ show_id: showId, artist_name, sort_order: index }))); }
 async function replaceShowVideos(showId, urls) { await supabase.from("show_media").delete().eq("show_id", showId).eq("media_kind", "video"); if (!urls.length) return; await supabase.from("show_media").insert(urls.map((external_url, index) => ({ show_id: showId, media_kind: "video", external_url, sort_order: index }))); }
 async function initialize() {
-  const savedOwnerSession = localStorage.getItem(OWNER_SESSION_KEY);
   state.ownerShellOpen = APP_PAGE_MODE === "admin";
   loadCachedPublicState();
   loadCachedOwnerData();
-  if (savedOwnerSession === "demo") {
-    state.ownerLoggedIn = true;
-    state.ownerAuthMode = "demo";
-  }
-  if (savedOwnerSession === "supabase") {
-    state.ownerLoggedIn = true;
-    state.ownerAuthMode = "supabase";
-  }
+  localStorage.removeItem(OWNER_SESSION_KEY);
   if (supabase) {
     try {
       await loadPublicData();
-      const { data } = await supabase.auth.getSession();
-      if (data.session) {
+      const { data, error } = await supabase.auth.getUser();
+      if (error && error.name !== "AuthSessionMissingError") throw error;
+      if (data.user?.app_metadata?.is_admin === true) {
         state.ownerLoggedIn = true;
         state.ownerAuthMode = "supabase";
-        localStorage.setItem(OWNER_SESSION_KEY, "supabase");
         await loadOwnerData();
         window.dispatchEvent(new CustomEvent("soundwav:owner-authenticated"));
-      } else if (savedOwnerSession === "supabase") {
+      } else {
         state.ownerLoggedIn = false;
         state.ownerAuthMode = null;
-        localStorage.removeItem(OWNER_SESSION_KEY);
       }
     } catch (error) {
       console.error(error);
@@ -724,12 +710,10 @@ document.getElementById("owner-toggle")?.addEventListener("click", (event) => {
 });
 if (supabase) {
   supabase.auth.onAuthStateChange(async (eventName, session) => {
-    if (!session && eventName === "INITIAL_SESSION" && localStorage.getItem(OWNER_SESSION_KEY) === "supabase") {
-      return;
-    }
-    state.ownerLoggedIn = !!session;
-    state.ownerAuthMode = session ? "supabase" : null;
-    if (session) {
+    const isAdmin = session?.user?.app_metadata?.is_admin === true;
+    state.ownerLoggedIn = isAdmin;
+    state.ownerAuthMode = isAdmin ? "supabase" : null;
+    if (isAdmin) {
       state.ownerShellOpen = true;
       try {
         await loadOwnerData();
@@ -775,7 +759,7 @@ document.getElementById("newsletter-form").addEventListener("submit", async (eve
     setMessage("newsletter-message", error.message || "Could not join the list.", "error");
   }
 });
-document.getElementById("optout-form").addEventListener("submit", async (event) => { event.preventDefault(); const email = String(new FormData(event.currentTarget).get("email")).trim().toLowerCase(); state.subscribers = state.subscribers.map((item) => item.email === email ? { ...item, active: false } : item); persistOwnerData(); renderSubscribers(); const { error } = await supabase.from("subscribers").update({ active: false }).eq("email", email); if (error) return setMessage("optout-message", error.message, "error"); event.currentTarget.reset(); if (state.ownerLoggedIn) await loadOwnerData(); renderSubscribers(); setMessage("optout-message", "You have been unsubscribed.", "success"); });
+document.getElementById("optout-form").addEventListener("submit", async (event) => { event.preventDefault(); const email = String(new FormData(event.currentTarget).get("email")).trim().toLowerCase(); try { await invokePublicFunction("newsletter-signup", { action: "unsubscribe", email }); event.currentTarget.reset(); if (state.ownerLoggedIn) await loadOwnerData(); renderSubscribers(); setMessage("optout-message", "You have been unsubscribed.", "success"); } catch (error) { setMessage("optout-message", error.message || "Could not unsubscribe.", "error"); } });
 const artistSubmissionForm = document.getElementById("artist-submission-form");
 const artistSubmissionPhone = artistSubmissionForm?.elements?.phone;
 const artistSubmissionCity = artistSubmissionForm?.elements?.city;
@@ -805,7 +789,7 @@ artistSubmissionForm?.addEventListener("submit", async (event) => {
   renderSubmissions();
   try {
     const result = await invokePublicFunction("artist-submit", payload);
-    const data = result?.submission;
+    const data = { id: result?.submissionId || tempId, ...payload, status: "New", created_at: new Date().toISOString() };
     state.submissions = [data, ...state.submissions.filter((item) => item.id !== tempId)];
     if (window.__soundwavState) window.__soundwavState.submissions = state.submissions;
     persistOwnerData();
@@ -829,22 +813,10 @@ window.handleOwnerLogin = async function handleOwnerLogin() {
   const form = document.getElementById("login-form");
   if (!form) return false;
   const formData = new FormData(form);
-  const rawLogin = String(formData.get("email") || "").trim().toLowerCase();
-  const email = rawLogin.includes("@") ? rawLogin : `${rawLogin}@soundwav-admin.example.com`;
+  const email = String(formData.get("email") || "").trim().toLowerCase();
   const password = String(formData.get("password") || "");
-  if (!rawLogin || !password) {
-    setMessage("login-message", "Enter your email or username and password.", "error");
-    return false;
-  }
-  if (email === "owner@soundwav.local" && password === "project2") {
-    state.ownerLoggedIn = true;
-    state.ownerAuthMode = "demo";
-    forceOwnerShell(true);
-    localStorage.setItem(OWNER_SESSION_KEY, "demo");
-    renderOwnerMode();
-    window.dispatchEvent(new CustomEvent("soundwav:owner-authenticated"));
-    form.reset();
-    setMessage("login-message", "Local admin unlocked.", "success");
+  if (!email || !password) {
+    setMessage("login-message", "Enter your email and password.", "error");
     return false;
   }
   if (!supabase) {
@@ -862,9 +834,13 @@ window.handleOwnerLogin = async function handleOwnerLogin() {
       setMessage("login-message", "Login returned no active session.", "error");
       return false;
     }
+    if (data.user?.app_metadata?.is_admin !== true) {
+      await supabase.auth.signOut();
+      setMessage("login-message", "This account is not authorized for site administration.", "error");
+      return false;
+    }
     state.ownerLoggedIn = true;
     state.ownerAuthMode = "supabase";
-    localStorage.setItem(OWNER_SESSION_KEY, "supabase");
     forceOwnerShell(true);
     try {
       await loadPublicData();

@@ -49,6 +49,12 @@ serve(async (request) => {
     if (!payload.name || !payload.email || !payload.phone || !payload.city || !payload.genre || !payload.pitch) {
       return json({ error: "Missing required submission fields." }, { status: 400 });
     }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(payload.email) || payload.email.length > 254) {
+      return json({ error: "A valid email is required." }, { status: 400 });
+    }
+    if (payload.name.length > 160 || payload.phone.length > 40 || payload.city.length > 160 || payload.genre.length > 160 || payload.links.length > 2000 || payload.pitch.length > 5000) {
+      return json({ error: "One or more fields are too long." }, { status: 400 });
+    }
 
     const admin = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false, autoRefreshToken: false },
@@ -56,10 +62,10 @@ serve(async (request) => {
 
     const result = await admin.from("artist_submissions").insert(payload).select("*").single();
     if (result.error) {
-      return json({ error: result.error.message || "Could not save submission." }, { status: 400 });
+      return json({ error: "Could not save submission." }, { status: 400 });
     }
 
-    return json({ ok: true, submission: result.data });
+    return json({ ok: true, submissionId: result.data?.id || null });
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : "Unexpected error." }, { status: 500 });
   }

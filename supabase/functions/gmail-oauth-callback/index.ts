@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,6 +11,52 @@ const GOOGLE_REDIRECT_URI =
   "https://dafqbhphoeblxpfrizwx.supabase.co/functions/v1/gmail-oauth-callback";
 const GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.send";
 const GMAIL_TOKEN_URL = "https://oauth2.googleapis.com/token";
+
+function json(data: unknown, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { "Content-Type": "application/json; charset=utf-8", ...corsHeaders },
+  });
+}
+
+function encodeBase64Url(bytes: Uint8Array) {
+  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+async function signState(secret: string) {
+  const payload = encodeBase64Url(new TextEncoder().encode(JSON.stringify({ exp: Date.now() + 10 * 60 * 1000, nonce: crypto.randomUUID() })));
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payload));
+  return `${payload}.${encodeBase64Url(new Uint8Array(signature))}`;
+}
+
+async function verifyState(state: string, secret: string) {
+  const [payload, signature] = state.split(".");
+  if (!payload || !signature) return false;
+  const expected = await signPayload(payload, secret);
+  if (signature !== expected) return false;
+  try {
+    const decoded = JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/")));
+    return Number(decoded.exp) > Date.now();
+  } catch (_) {
+    return false;
+  }
+}
+
+async function signPayload(payload: string, secret: string) {
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  return encodeBase64Url(new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payload))));
+}
+
+async function requireAdmin(request: Request) {
+  const supabaseUrl = requireEnv("SUPABASE_URL");
+  const serviceRoleKey = requireEnv("SUPABASE_SERVICE_ROLE_KEY");
+  const token = (request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
+  if (!token) return false;
+  const client = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { data, error } = await client.auth.getUser(token);
+  return !error && data.user?.app_metadata?.is_admin === true;
+}
 
 function html(body: string, status = 200) {
   return new Response(
@@ -142,22 +189,19 @@ serve(async (request) => {
     const clientSecret = requireEnv("GMAIL_CLIENT_SECRET");
     const url = new URL(request.url);
     const code = url.searchParams.get("code") || "";
+    const state = url.searchParams.get("state") || "";
     const error = url.searchParams.get("error") || "";
     const wantsStatus = url.searchParams.get("status") === "1";
-    const shouldStartOauth = !code && !error;
+    const wantsStart = url.searchParams.get("start") === "1";
 
     if (wantsStatus) {
+      if (!(await requireAdmin(request))) return json({ error: "Admin access required" }, 403);
       const status = await getGmailStatus();
-      return new Response(JSON.stringify(status), {
-        status: status.ok ? 200 : 400,
-        headers: {
-          "Content-Type": "application/json; charset=utf-8",
-          ...corsHeaders,
-        },
-      });
+      return json(status, status.ok ? 200 : 400);
     }
 
-    if (shouldStartOauth) {
+    if (wantsStart) {
+      if (!(await requireAdmin(request))) return json({ error: "Admin access required" }, 403);
       const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
       authUrl.searchParams.set("client_id", clientId);
       authUrl.searchParams.set("redirect_uri", GOOGLE_REDIRECT_URI);
@@ -165,8 +209,13 @@ serve(async (request) => {
       authUrl.searchParams.set("scope", GMAIL_SCOPE);
       authUrl.searchParams.set("access_type", "offline");
       authUrl.searchParams.set("prompt", "consent");
+      authUrl.searchParams.set("state", await signState(clientSecret));
 
-      return Response.redirect(authUrl.toString(), 302);
+      return json({ ok: true, authUrl: authUrl.toString() });
+    }
+
+    if (!(await verifyState(state, clientSecret))) {
+      return html("<h1 class=\"error\">Invalid or expired authorization request</h1>", 403);
     }
 
     if (error) {
