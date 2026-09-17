@@ -470,6 +470,7 @@
       };
       const getClient = () => {
         if (!window.supabase || !window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) return null;
+        if (window.__soundwavSupabaseClient) return window.__soundwavSupabaseClient;
         if (!window.__soundwavInlineClient) {
           window.__soundwavInlineClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
         }
