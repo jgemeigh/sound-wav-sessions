@@ -266,7 +266,14 @@ body:not(.public-loading) #public-load-status { display: none; }
 .archive-artists { display: flex; flex-wrap: wrap; gap: .6rem; list-style: none; padding: 0; }
 .archive-artists li { min-width: 0; max-width: 100%; }
 .archive-artists .social-link { white-space: normal; }
-.archive-card .gallery-grid img { width: 120px; height: 120px; object-fit: cover; }
+.show-gallery { margin-top: 1rem; min-width: 0; }
+.show-photo-track { display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; scrollbar-width: none; }
+.show-photo-track > a { flex: 0 0 100%; min-width: 0; scroll-snap-align: start; }
+.archive-card .show-photo-track img { display: block; width: 100%; height: min(65vh, 540px); object-fit: contain; }
+.show-photo-controls { display: flex; justify-content: flex-end; gap: .5rem; margin-top: .5rem; }
+.show-photo-controls[hidden] { display: none; }
+.show-photo-controls button { width: 44px; height: 44px; border: 1px solid var(--line); background: transparent; color: var(--ink); font-size: 1.4rem; cursor: pointer; }
+.show-photo-controls button:disabled { opacity: .35; cursor: default; }
 .latest-newsletter-card, .owner-subpanel { background: var(--panel-alt); }
 .latest-newsletter-card { margin-top: 1rem; }
 .newsletter-body,

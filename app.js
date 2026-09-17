@@ -481,7 +481,7 @@ function renderArchive(shows = state.shows) {
       <p>${escapeHtml(show.venue || "")}${show.address ? `<br>${escapeHtml(show.address)}` : ""}</p>
       <ul class="archive-artists">${(show.artists || []).map((name) => `<li>${renderArtistJumpLink(escapeHtml(name))}</li>`).join("")}</ul>
       ${show.description ? `<p>${escapeHtml(show.description)}</p>` : ""}
-      ${gallery.length ? `<div class="gallery-grid">${gallery.map((image) => `<a href="${escapeHtml(image)}" target="_blank" rel="noreferrer"><img src="${escapeHtml(image)}" alt="${title} photo" loading="lazy"></a>`).join("")}</div>` : ""}
+      ${gallery.length ? `<section class="show-gallery" aria-label="${title} photos"><div class="show-photo-track" tabindex="0" aria-label="Show photos">${gallery.map((image, index) => `<a href="${escapeHtml(image)}" target="_blank" rel="noreferrer"><img src="${escapeHtml(image)}" alt="${title} photo ${index + 1}" loading="lazy"></a>`).join("")}</div><div class="show-photo-controls"${gallery.length < 2 ? " hidden" : ""}><button type="button" data-photo-direction="-1" aria-label="Previous photo" title="Previous photo">&#8592;</button><button type="button" data-photo-direction="1" aria-label="Next photo" title="Next photo">&#8594;</button></div></section>` : ""}
       <div class="video-grid">${(show.videos || []).map((url) => `<a class="social-link" href="${escapeHtml(url)}" target="_blank" rel="noreferrer">Video link</a>`).join("")}</div></div>
     </article>`;
   }).join("");
@@ -520,6 +520,38 @@ function startArtistCarousels() {
     if (images.length < 2) return;
     artistCarouselTimers.push(setInterval(() => { if (card.dataset.artistLocked === "true") return; cycleArtistImage(card, 1); }, 2400));
   });
+}
+function bindShowGalleries() {
+  const grid = q("archive-grid");
+  const update = (gallery) => {
+    const track = gallery.querySelector(".show-photo-track");
+    const photos = [...track.children];
+    if (!photos.length) { gallery.remove(); return; }
+    gallery.querySelector(".show-photo-controls").hidden = photos.length < 2;
+    const index = Math.round(track.scrollLeft / (track.clientWidth + 16));
+    gallery.querySelector('[data-photo-direction="-1"]').disabled = index <= 0;
+    gallery.querySelector('[data-photo-direction="1"]').disabled = index >= photos.length - 1;
+  };
+  grid.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-photo-direction]");
+    if (!button) return;
+    const track = button.closest(".show-gallery").querySelector(".show-photo-track");
+    track.scrollBy({ left: Number(button.dataset.photoDirection) * (track.clientWidth + 16), behavior: "smooth" });
+  });
+  grid.addEventListener("scroll", (event) => {
+    if (event.target.matches(".show-photo-track")) update(event.target.closest(".show-gallery"));
+  }, true);
+  grid.addEventListener("load", (event) => {
+    const gallery = event.target.closest?.(".show-gallery");
+    if (gallery) update(gallery);
+  }, true);
+  grid.addEventListener("error", (event) => {
+    const image = event.target;
+    const gallery = image.closest?.(".show-gallery");
+    if (!gallery) return;
+    image.closest("a").remove();
+    update(gallery);
+  }, true);
 }
 function bindArtistImageFallback() {
   q("artist-grid").addEventListener("click", (event) => {
@@ -946,6 +978,7 @@ window.__soundwavNewsletterEmailFooter = NEWSLETTER_EMAIL_FOOTER;
 window.__soundwavOpenTestNewsletterBroadcast = openTestNewsletterBroadcast;
 initSoundwaveBackground();
 bindArtistImageFallback();
+bindShowGalleries();
 if (APP_PAGE_MODE === "admin") renderAll();
 initialize().catch((error) => {
   console.error(error);
