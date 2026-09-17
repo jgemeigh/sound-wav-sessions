@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260917b">
+  <link rel="stylesheet" href="styles.css?v=20260917f">
 </head>
 <body data-app-page="admin">
   <canvas id="soundwave-bg" aria-hidden="true"></canvas>
@@ -1103,7 +1103,7 @@
         const previewGrid = q('artist-photo-preview-grid');
         const label = q('artist-photo-filename');
         if (!previewGrid || !label) return;
-        const items = Array.from(files || []).slice(0, 4);
+        const items = Array.from(files || []);
         if (!items.length) {
           previewGrid.innerHTML = '';
           previewGrid.classList.add('hidden');
@@ -2340,7 +2340,7 @@
       };
       const renderPreviewGrid = (node, items, altPrefix) => {
         if (!node) return;
-        const previews = Array.from(items || []).slice(0, 4);
+        const previews = Array.from(items || []);
         node.innerHTML = "";
         if (!previews.length) {
           node.classList.add("hidden");
@@ -2365,7 +2365,7 @@
       };
       const renderManagedThumbGrid = (node, items, altPrefix) => {
         if (!node) return;
-        const previews = Array.from(items || []).slice(0, 4);
+        const previews = Array.from(items || []);
         node.innerHTML = "";
         if (!previews.length) {
           node.classList.add("hidden");
@@ -2419,7 +2419,7 @@
         const previewItems = [
           ...resolvedExistingImages.map((src, index) => ({ kind: "existing", src, index })),
           ...resolvedPending.map((file, index) => ({ kind: "pending", file, index }))
-        ].slice(0, 4);
+        ];
         renderManagedThumbGrid(preview, previewItems, "Archive gallery preview");
       };
       const nextDuplicateShowTitle = (title, items) => {
@@ -2478,7 +2478,7 @@
         if (label) label.textContent = "Replace image";
       };
       const showEditorMarkup = (item) =>
-        '<div class="inline-editor" data-show-inline-id="' + (item?.id || "") + '" data-existing-gallery=\'' + JSON.stringify((item?.gallery || []).slice(0, 4)).replace(/'/g, "&apos;") + '\' data-existing-gallery-paths=\'' + JSON.stringify((item?.galleryPaths || []).slice(0, 4)).replace(/'/g, "&apos;") + '\' data-existing-banner="' + ((item?.banner || "").replace(/"/g, '&quot;')) + '" data-existing-banner-path="' + ((item?.bannerPath || "").replace(/"/g, '&quot;')) + '" data-remove-banner="false">' +
+        '<div class="inline-editor" data-show-inline-id="' + (item?.id || "") + '" data-existing-gallery=\'' + JSON.stringify((item?.gallery || [])).replace(/'/g, "&apos;") + '\' data-existing-gallery-paths=\'' + JSON.stringify((item?.galleryPaths || [])).replace(/'/g, "&apos;") + '\' data-existing-banner="' + ((item?.banner || "").replace(/"/g, '&quot;')) + '" data-existing-banner-path="' + ((item?.bannerPath || "").replace(/"/g, '&quot;')) + '" data-remove-banner="false">' +
           '<div class="inline-grid">' +
             '<label>Show title<input type="text" data-inline-show-title value="' + ((item?.title || "").replace(/"/g, '&quot;')) + '"></label>' +
             '<label>Date<input type="date" data-inline-show-date value="' + (item?.date || "") + '"></label>' +
@@ -2491,7 +2491,7 @@
           '<label><span data-inline-show-banner-label>' + ((item?.banner || item?.bannerPath) ? 'Replace image' : 'Choose image') + '</span><input type="file" data-inline-show-banner accept="image/*"></label>' +
           ((item?.banner || "") ? '<div class="inline-preview-shell" data-inline-show-banner-shell><img class="inline-preview" src="' + item.banner + '" alt="' + ((item?.title || "Archive banner").replace(/"/g, '&quot;')) + '"><button class="inline-thumb-remove" type="button" aria-label="Remove banner image" data-inline-show-remove-banner="true">x</button></div>' : '') +
           '<label>Additional photos<input type="file" data-inline-show-gallery accept="image/*" multiple></label>' +
-          '<div class="inline-thumb-row' + (((item?.gallery || []).length ? '' : ' hidden')) + '" data-inline-show-gallery-preview>' + ((item?.gallery || []).slice(0, 4).map((image, index) => '<span class="inline-thumb"><img src="' + image + '" alt="' + ((item?.title || "Archive").replace(/"/g, '&quot;')) + ' gallery image"><button class="inline-thumb-remove" type="button" aria-label="Remove gallery image" data-remove-existing-show-image-index="' + index + '">x</button></span>').join("")) + '</div>' +
+          '<div class="inline-thumb-row' + (((item?.gallery || []).length ? '' : ' hidden')) + '" data-inline-show-gallery-preview>' + ((item?.gallery || []).map((image, index) => '<span class="inline-thumb"><img src="' + image + '" alt="' + ((item?.title || "Archive").replace(/"/g, '&quot;')) + ' gallery image"><button class="inline-thumb-remove" type="button" aria-label="Remove gallery image" data-remove-existing-show-image-index="' + index + '">x</button></span>').join("")) + '</div>' +
           '<div class="list-actions"><button class="mini-button" type="button" data-save-show-id="' + (item?.id || "") + '">Save</button><button class="mini-button ghost" type="button" data-cancel-show-id="' + (item?.id || "") + '">Cancel</button><button class="mini-button ghost" type="button" data-duplicate-show-id="' + (item?.id || "") + '">Duplicate show</button><button class="mini-button ghost" type="button" data-show-final-copy="' + (item?.id || "") + '">Copy details</button><button class="mini-button ghost" type="button" data-show-final-unarchive="' + (item?.id || "") + '">Un-archive</button><button class="mini-button danger" type="button" data-show-final-delete="' + (item?.id || "") + '">Delete</button></div>' +
         '</div>';
       const sortByDateDesc = (items) =>
@@ -3384,7 +3384,7 @@
         const previewItems = [
           ...resolvedExisting.map((src, index) => ({ kind: "existing", src, index })),
           ...resolvedPending.map((file, index) => ({ kind: "pending", file, index }))
-        ].slice(0, 4);
+        ];
         if (!previewItems.length) {
           const fallback = document.createElement("span");
           fallback.className = "inline-thumb";
@@ -3743,7 +3743,7 @@
         linktree: item?.links?.linktree || ""
       });
       const artistInlineThumbsMarkup = (item) => {
-        const images = ((item?.images || []).map((image) => String(image || "").trim()).filter(Boolean)).slice(0, 4);
+        const images = ((item?.images || []).map((image) => String(image || "").trim()).filter(Boolean));
         if (!images.length) {
           return '<span class="inline-thumb"><img src="' + (window.__soundwavArtistPlaceholder || "") + '" alt="' + ((item?.name || "Artist").replace(/"/g, '&quot;')) + ' placeholder"></span>';
         }
@@ -3946,7 +3946,7 @@
                 const linkCount = Object.values(links).filter(Boolean).length;
                 const imageCount = (item.images || []).length;
                 return editingArtistId === item.id
-                  ? '<article class="admin-list-item" data-artist-inline-id="' + item.id + '"><div class="inline-editor" data-artist-inline-editor data-existing-images=\'' + JSON.stringify(((item.images || []).map((image) => String(image || "").trim()).filter(Boolean).slice(0, 4))).replace(/'/g, "&apos;") + '\' data-existing-image-paths=\'' + JSON.stringify((((item.imagePaths || []).map((image) => String(image || "").trim()).filter(Boolean)).slice(0, 4))).replace(/'/g, "&apos;") + '\'><label>Artist name<input type="text" data-artist-name value="' + ((item.name || "").replace(/"/g, '&quot;')) + '"></label><label>Genre<input type="text" data-artist-genre value="' + ((item.genre || "").replace(/"/g, '&quot;')) + '"></label><label>Bio<textarea rows="4" data-artist-bio>' + (item.bio || "") + '</textarea></label><div class="inline-grid"><label>Instagram<input type="text" data-artist-instagram value="' + ((links.instagram || "").replace(/"/g, '&quot;')) + '"></label><label>Spotify<input type="text" data-artist-spotify value="' + ((links.spotify || "").replace(/"/g, '&quot;')) + '"></label><label>SoundCloud<input type="text" data-artist-soundcloud value="' + ((links.soundcloud || "").replace(/"/g, '&quot;')) + '"></label><label>Bandcamp<input type="text" data-artist-bandcamp value="' + ((links.bandcamp || "").replace(/"/g, '&quot;')) + '"></label><label>Website<input type="text" data-artist-website value="' + ((links.website || "").replace(/"/g, '&quot;')) + '"></label><label>Linktree<input type="text" data-artist-linktree value="' + ((links.linktree || "").replace(/"/g, '&quot;')) + '"></label></div><label>Add artist photos<input type="file" data-artist-photos accept="image/*" multiple></label><div class="inline-thumb-row" data-artist-inline-preview>' + artistInlineThumbsMarkup(item) + '</div><p>' + imageCount + ' image(s) / ' + linkCount + ' link(s)</p><div class="list-actions"><button class="mini-button" type="button" data-save-artist-id="' + item.id + '">Save</button><button class="mini-button ghost" type="button" data-cancel-artist-id="' + item.id + '">Cancel</button><button class="mini-button danger" type="button" data-delete-artist-id="' + item.id + '">Delete</button></div></div></article>'
+                  ? '<article class="admin-list-item" data-artist-inline-id="' + item.id + '"><div class="inline-editor" data-artist-inline-editor data-existing-images=\'' + JSON.stringify(((item.images || []).map((image) => String(image || "").trim()).filter(Boolean))).replace(/'/g, "&apos;") + '\' data-existing-image-paths=\'' + JSON.stringify((((item.imagePaths || []).map((image) => String(image || "").trim()).filter(Boolean)))).replace(/'/g, "&apos;") + '\'><label>Artist name<input type="text" data-artist-name value="' + ((item.name || "").replace(/"/g, '&quot;')) + '"></label><label>Genre<input type="text" data-artist-genre value="' + ((item.genre || "").replace(/"/g, '&quot;')) + '"></label><label>Bio<textarea rows="4" data-artist-bio>' + (item.bio || "") + '</textarea></label><div class="inline-grid"><label>Instagram<input type="text" data-artist-instagram value="' + ((links.instagram || "").replace(/"/g, '&quot;')) + '"></label><label>Spotify<input type="text" data-artist-spotify value="' + ((links.spotify || "").replace(/"/g, '&quot;')) + '"></label><label>SoundCloud<input type="text" data-artist-soundcloud value="' + ((links.soundcloud || "").replace(/"/g, '&quot;')) + '"></label><label>Bandcamp<input type="text" data-artist-bandcamp value="' + ((links.bandcamp || "").replace(/"/g, '&quot;')) + '"></label><label>Website<input type="text" data-artist-website value="' + ((links.website || "").replace(/"/g, '&quot;')) + '"></label><label>Linktree<input type="text" data-artist-linktree value="' + ((links.linktree || "").replace(/"/g, '&quot;')) + '"></label></div><label>Add artist photos<input type="file" data-artist-photos accept="image/*" multiple></label><div class="inline-thumb-row" data-artist-inline-preview>' + artistInlineThumbsMarkup(item) + '</div><p>' + imageCount + ' image(s) / ' + linkCount + ' link(s)</p><div class="list-actions"><button class="mini-button" type="button" data-save-artist-id="' + item.id + '">Save</button><button class="mini-button ghost" type="button" data-cancel-artist-id="' + item.id + '">Cancel</button><button class="mini-button danger" type="button" data-delete-artist-id="' + item.id + '">Delete</button></div></div></article>'
                   : '<article class="admin-list-item"><div class="inline-thumb-row">' + ((((item.images || []).map((image) => String(image || "").trim()).filter(Boolean).length ? (item.images || []).map((image) => String(image || "").trim()).filter(Boolean) : [window.__soundwavArtistPlaceholder || ""]).slice(0, 4)).map((image, index) => '<img class="' + (index === 0 ? 'artist-admin-preview' : '') + '" src="' + image + '" alt="' + ((item.name || "Artist").replace(/"/g, '&quot;')) + ' image ' + (index + 1) + '">').join("")) + '</div><p><strong>' + item.name + '</strong></p><p>' + (item.genre || "") + '</p><p>' + (item.bio || "") + '</p><p>' + imageCount + ' image(s) / ' + linkCount + ' link(s)</p><div class="list-actions"><button class="mini-button" type="button" data-edit-artist-id="' + item.id + '">Edit</button><button class="mini-button danger" type="button" data-delete-artist-id="' + item.id + '">Delete</button></div></article>';
               }).join("")
             : '<article class="admin-list-item"><p>No artists saved yet.</p></article>';
@@ -4902,6 +4902,7 @@
       });
     })();
   </script>
+  <script src="admin-photo-picker.js?v=20260917a"></script>
 </body>
 </html>
 
