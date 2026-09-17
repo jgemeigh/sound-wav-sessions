@@ -212,6 +212,9 @@ textarea { resize: vertical; }
 .site-footer { padding: 0 0 2rem; display: flex; justify-content: space-between; gap: 1rem; color: var(--muted); }
 .site-footer.is-empty:not(:has(.admin-login-link)) { display: none; }
 .site-footer .admin-login-link { color: var(--muted); text-decoration: underline; text-underline-offset: .2em; }
+.public-loading #public-shell { visibility: hidden; }
+#public-load-status { position: fixed; inset: 0; display: grid; place-content: center; gap: 1rem; z-index: 10; text-align: center; }
+body:not(.public-loading) #public-load-status { display: none; }
 .hidden { display: none !important; }
 .featured-upcoming-list { display: grid; gap: 1rem; }
 .featured-upcoming-card .poster-frame { transform: none; }

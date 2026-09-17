@@ -7,9 +7,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260917b">
+  <link rel="stylesheet" href="styles.css?v=20260917d">
 </head>
-<body data-app-page="public">
+<body data-app-page="public" class="public-loading">
+  <div id="public-load-status" role="status">Loading...</div>
   <canvas id="soundwave-bg" aria-hidden="true"></canvas>
   <div class="noise"></div>
 
@@ -433,8 +434,9 @@
     </main>
   </div>
 
-      <script>
+  <script>
     (function () {
+      if (document.body.dataset.appPage !== "admin") return;
       const q = (id) => document.getElementById(id);
       const setLoginMessage = (text, tone) => {
         const node = q('login-message');
@@ -543,9 +545,10 @@
   </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js?v=20260427a"></script>
-  <script src="app.js?v=20260917c"></script>
+  <script src="app.js?v=20260917d"></script>
   <script id="soundwav-upcoming-manager">
     (() => {
+      if (document.body.dataset.appPage !== "admin") return;
       return;
       const DRAFT_KEY = "soundwav-upcoming-drafts";
       const CURRENT_KEY = "soundwav-current-upcoming";
@@ -948,6 +951,7 @@
   </script>
   <script>
     (function () {
+      if (document.body.dataset.appPage !== "admin") return;
       const CACHE_KEY = 'soundwav-public-state';
       const BUCKET = 'soundwav-media';
       const q = (id) => document.getElementById(id);
@@ -1237,6 +1241,7 @@
   </script>
   <script id="soundwav-upcoming-final">
     (() => {
+      if (document.body.dataset.appPage !== "admin") return;
       const DRAFT_KEY = "soundwav-upcoming-drafts";
       const CURRENT_KEY = "soundwav-current-upcoming";
       const BUCKET = "soundwav-media";
@@ -2271,6 +2276,7 @@
   </script>
   <script id="soundwav-show-final">
     (() => {
+      if (document.body.dataset.appPage !== "admin") return;
       const BUCKET = "soundwav-media";
       const DRAFT_KEY = "soundwav-upcoming-drafts";
       const PUBLIC_CACHE_KEY = "soundwav-public-state";
@@ -2984,6 +2990,7 @@
   </script>
   <script id="soundwav-owner-data-final">
     (() => {
+      if (document.body.dataset.appPage !== "admin") return;
       const PUBLIC_CACHE_KEY = "soundwav-public-state";
       const OWNER_CACHE_KEY = "soundwav-owner-data";
       const BUCKET = "soundwav-media";

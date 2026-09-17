@@ -321,7 +321,7 @@ async function loadPublicData() {
     supabase.from("site_copy").select("*").eq("id", 1).maybeSingle(),
     supabase.from("upcoming_show").select("*").eq("id", 1).maybeSingle(),
     supabase.from("upcoming_show_artists").select("*").eq("upcoming_show_id", 1).order("sort_order"),
-    supabase.from("donation_methods").select("*").order("sort_order").then((res) => res).catch(() => ({ data: [], error: null })),
+    supabase.from("donation_methods").select("*").order("sort_order"),
     supabase.from("artists").select("*").order("created_at", { ascending: false }),
     supabase.from("artist_images").select("*").order("sort_order"),
     supabase.from("shows").select("*").order("show_date", { ascending: false }),
@@ -330,11 +330,12 @@ async function loadPublicData() {
     supabase.from("affiliates").select("*").order("created_at", { ascending: false }),
     supabase.from("newsletters").select("*").order("created_at", { ascending: false })
   ]);
-  if (siteRes.error) throw siteRes.error;
-  if (upcomingRes.error) throw upcomingRes.error;
-  state.siteCopy = mergeTextContent(fallbackData.siteCopy, siteRes.data || {});
+  for (const result of [siteRes, upcomingRes, upcomingArtistsRes, donationsRes, artistsRes, artistImagesRes, showsRes, showArtistsRes, showMediaRes, affiliatesRes, newslettersRes]) {
+    if (result.error) throw result.error;
+  }
+  state.siteCopy = { ...fallbackData.siteCopy, ...(siteRes.data || {}) };
   state.upcomingShow = mergeUpcomingContent(fallbackData.upcomingShow, upcomingRes.data || {}, (upcomingArtistsRes.data || []).map((item) => item.artist_name));
-  state.donations = (donationsRes.data || []).length ? (donationsRes.data || []) : fallbackData.donations;
+  state.donations = donationsRes.data || [];
   state.featuredUpcomingShows = state.upcomingShow?.title ? [state.upcomingShow] : [];
   const imagesByArtist = new Map();
   (artistImagesRes.data || []).forEach((item) => {
@@ -468,7 +469,7 @@ function renderUpcomingShow() {
     stack.classList.add("hidden");
   }
 }
-function renderDonations() { const items = (state.donations && state.donations.length) ? state.donations : fallbackData.donations; q("donation-links").innerHTML = items.map((item) => `<article class="donation-card"><h3>${item.label}</h3><p>${item.note}</p><p><strong>${item.handle}</strong></p><a href="${item.url}" target="_blank" rel="noreferrer">Open ${item.label}</a></article>`).join(""); }
+function renderDonations() { const items = state.donations || []; q("donation-links").innerHTML = items.map((item) => `<article class="donation-card"><h3>${item.label}</h3><p>${item.note}</p><p><strong>${item.handle}</strong></p><a href="${item.url}" target="_blank" rel="noreferrer">Open ${item.label}</a></article>`).join(""); }
 function renderArchive(shows = state.shows) {
   q("archive-grid").innerHTML = shows.map((show) => {
     const title = escapeHtml(show.title || "Show");
@@ -521,6 +522,18 @@ function startArtistCarousels() {
   });
 }
 function bindArtistImageFallback() {
+  q("artist-grid").addEventListener("click", (event) => {
+    const thumb = event.target.closest("[data-artist-thumb-index]");
+    if (!thumb) return;
+    const card = thumb.closest("[data-artist-images]");
+    const images = JSON.parse(card.dataset.artistImages || "[]");
+    const index = Number(thumb.dataset.artistThumbIndex);
+    if (!images[index]) return;
+    card.dataset.artistLocked = "true";
+    card.dataset.artistImageIndex = String(index);
+    card.querySelector(".artist-main-image").src = images[index];
+    card.querySelectorAll("[data-artist-thumb-index]").forEach((node) => node.classList.toggle("active", node === thumb));
+  });
   document.addEventListener("error", (event) => {
     const image = event.target;
     if (!(image instanceof HTMLImageElement) || !image.closest(".artist-card") || image.src === ARTIST_PLACEHOLDER) return;
@@ -679,7 +692,15 @@ async function replaceShowArtists(showId, names) { await supabase.from("show_art
 async function replaceShowVideos(showId, urls) { await supabase.from("show_media").delete().eq("show_id", showId).eq("media_kind", "video"); if (!urls.length) return; await supabase.from("show_media").insert(urls.map((external_url, index) => ({ show_id: showId, media_kind: "video", external_url, sort_order: index }))); }
 async function initialize() {
   state.ownerShellOpen = APP_PAGE_MODE === "admin";
-  loadCachedPublicState();
+  if (APP_PAGE_MODE === "public") {
+    if (!supabase) throw new Error("Site connection unavailable.");
+    await loadPublicData();
+    renderAll();
+    const hero = q("upcoming-hero-image");
+    if (hero?.getAttribute("src")) await hero.decode().catch(() => {});
+    document.body.classList.remove("public-loading");
+    return;
+  }
   loadCachedOwnerData();
   localStorage.removeItem(OWNER_SESSION_KEY);
   if (supabase) {
@@ -925,8 +946,18 @@ window.__soundwavNewsletterEmailFooter = NEWSLETTER_EMAIL_FOOTER;
 window.__soundwavOpenTestNewsletterBroadcast = openTestNewsletterBroadcast;
 initSoundwaveBackground();
 bindArtistImageFallback();
-renderAll();
-initialize().catch((error) => { console.error(error); setMessage("login-message", error.message || "Setup error", "error"); });
+if (APP_PAGE_MODE === "admin") renderAll();
+initialize().catch((error) => {
+  console.error(error);
+  if (APP_PAGE_MODE === "public") {
+    const status = q("public-load-status");
+    status.textContent = "Could not load the site.";
+    const retry = document.createElement("button");
+    retry.textContent = "Retry";
+    retry.addEventListener("click", () => window.location.reload());
+    status.append(retry);
+  } else setMessage("login-message", error.message || "Setup error", "error");
+});
 })();
 
 
