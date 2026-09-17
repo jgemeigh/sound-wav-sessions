@@ -417,6 +417,8 @@ function normalizeArtistLookupName(name) {
   const aliases = {
     antonluciano: "antonious",
     antonius: "antonious",
+    blueeyeswhitedragon: "antonious",
+    blueeyeswhitedrxgon: "antonious",
     infntlp: "infiniteloop",
     jdreams: "jdreamsthealien",
     solow: "solowthegreat",
