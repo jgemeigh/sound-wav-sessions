@@ -418,6 +418,8 @@ function normalizeArtistLookupName(name) {
     antonluciano: "antonious",
     antonius: "antonious",
     infntlp: "infiniteloop",
+    jdreams: "jdreamsthealien",
+    solow: "solowthegreat",
     los: "losfromthebx",
     ahrsartis: "ahrsahrtis"
   };
