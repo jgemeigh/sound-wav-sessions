@@ -413,19 +413,26 @@ function slugify(value) {
   return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
 function normalizeArtistLookupName(name) {
-  const normalized = String(name || "").trim().toLowerCase();
-  if (normalized === "anton luciano") return "antonious";
-  return normalized;
+  const normalized = String(name || "").normalize("NFKD").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const aliases = {
+    antonluciano: "antonious",
+    antonius: "antonious",
+    infntlp: "infiniteloop",
+    los: "losfromthebx",
+    ahrsartis: "ahrsahrtis"
+  };
+  return aliases[normalized] || normalized;
 }
 function findArtistMatchByName(name) {
   const normalized = normalizeArtistLookupName(name);
   if (!normalized) return null;
-  return state.artists.find((entry) => normalizeArtistLookupName(entry.name) === normalized) || null;
+  const matches = state.artists.filter((entry) => normalizeArtistLookupName(entry.name) === normalized);
+  return matches.length === 1 ? matches[0] : null;
 }
 function renderArtistJumpLink(label) {
   const match = findArtistMatchByName(label);
-  if (!match) return `<span class="social-link">${label}</span>`;
-  return `<a class="social-link" href="#artists" data-artist-jump="${match.name}">${label}</a>`;
+  if (!match) return `<span class="social-link">${escapeHtml(label)}</span>`;
+  return `<a class="social-link" href="#artists" data-artist-jump="${escapeHtml(match.name)}">${escapeHtml(label)}</a>`;
 }
 function renderArtistMetaListItems(artists) {
   return (artists || []).map((artist) => `<li>${renderArtistJumpLink(artist)}</li>`).join("");
@@ -479,7 +486,7 @@ function renderArchive(shows = state.shows) {
       ${banner ? `<img class="archive-flyer" src="${escapeHtml(banner)}" alt="${title} flyer">` : ""}
       <div class="archive-copy"><p class="eyebrow">${formatDate(show.date)}</p><h3>${title}</h3>
       <p>${escapeHtml(show.venue || "")}${show.address ? `<br>${escapeHtml(show.address)}` : ""}</p>
-      <ul class="archive-artists">${(show.artists || []).map((name) => `<li>${renderArtistJumpLink(escapeHtml(name))}</li>`).join("")}</ul>
+      <ul class="archive-artists">${(show.artists || []).map((name) => `<li>${renderArtistJumpLink(name)}</li>`).join("")}</ul>
       ${show.description ? `<p>${escapeHtml(show.description)}</p>` : ""}
       ${gallery.length ? `<section class="show-gallery" aria-label="${title} photos"><div class="show-photo-track" tabindex="0" aria-label="Show photos">${gallery.map((image, index) => `<a href="${escapeHtml(image)}" target="_blank" rel="noreferrer"><img src="${escapeHtml(image)}" alt="${title} photo ${index + 1}" loading="lazy"></a>`).join("")}</div><div class="show-photo-controls"${gallery.length < 2 ? " hidden" : ""}><button type="button" data-photo-direction="-1" aria-label="Previous photo" title="Previous photo">&#8592;</button><button type="button" data-photo-direction="1" aria-label="Next photo" title="Next photo">&#8594;</button></div></section>` : ""}
       <div class="video-grid">${(show.videos || []).map((url) => `<a class="social-link" href="${escapeHtml(url)}" target="_blank" rel="noreferrer">Video link</a>`).join("")}</div></div>
