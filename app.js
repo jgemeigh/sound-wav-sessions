@@ -528,6 +528,13 @@ function startArtistCarousels() {
     artistCarouselTimers.push(setInterval(() => { if (card.dataset.artistLocked === "true") return; cycleArtistImage(card, 1); }, 2400));
   });
 }
+function bindArtistImageFallback() {
+  document.addEventListener("error", (event) => {
+    const image = event.target;
+    if (!(image instanceof HTMLImageElement) || !image.closest(".artist-card") || image.src === ARTIST_PLACEHOLDER) return;
+    image.src = ARTIST_PLACEHOLDER;
+  }, true);
+}
 function renderArtists() { q("artist-grid").innerHTML = state.artists.map((artist) => { const images = artistImagesOrPlaceholder(artist.images); return `<article class="artist-card" id="artist-${slugify(artist.name)}" data-artist-images='${JSON.stringify(images).replace(/'/g, "&apos;")}'><img class="artist-main-image" src="${images[0] || ''}" alt="${artist.name}"><div class="artist-copy"><p class="eyebrow">${artist.genre}</p><h3>${artist.name}</h3><p>${artist.bio}</p><div class="artist-thumbs">${images.slice(0, 4).map((image, index) => `<img src="${image}" alt="${artist.name} photo" data-artist-thumb-index="${index}"${index === 0 ? ' class="active"' : ""}>`).join("")}</div><div class="platform-links">${platformLinks(artist.links)}</div></div></article>`; }).join(""); startArtistCarousels(); }
 function renderAffiliates() { q("affiliate-grid").innerHTML = state.affiliates.map((item) => `<article class="affiliate-card">${item.image ? `<img class="affiliate-image" src="${item.image}" alt="${item.name || "Affiliate"}">` : ""}<h3>${item.name}</h3><p>${item.blurb}</p><a href="${item.url}" target="_blank" rel="noreferrer">Visit link</a></article>`).join(""); }
 function renderNewsletters() {
@@ -899,6 +906,7 @@ window.__soundwavBuildNewsletterEmailPayload = buildNewsletterEmailPayload;
 window.__soundwavNewsletterEmailFooter = NEWSLETTER_EMAIL_FOOTER;
 window.__soundwavOpenTestNewsletterBroadcast = openTestNewsletterBroadcast;
 initSoundwaveBackground();
+bindArtistImageFallback();
 renderAll();
 initialize().catch((error) => { console.error(error); setMessage("login-message", error.message || "Setup error", "error"); });
 })();
