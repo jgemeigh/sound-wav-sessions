@@ -516,20 +516,6 @@
           return false;
         }
       };
-      window.handleOwnerLogout = async function handleOwnerLogout() {
-        const client = getClient();
-        if (client) {
-          try { await client.auth.signOut(); } catch (_) {}
-        }
-        localStorage.removeItem('soundwav-owner-session');
-        if (document.body?.dataset?.appPage === 'admin') {
-          window.location.href = 'index.html';
-          return false;
-        }
-        showOwnerLogin();
-        setLoginMessage('Logged out.', '');
-        return false;
-      };
       document.addEventListener('DOMContentLoaded', async () => {
         localStorage.removeItem('soundwav-owner-session');
         const initialClient = getClient();
@@ -542,7 +528,6 @@
           else showOwnerLogin();
         });
         q('back-to-site')?.addEventListener('click', showPublicSite);
-        q('logout-button')?.addEventListener('click', () => window.handleOwnerLogout && window.handleOwnerLogout());
         q('login-button')?.addEventListener('click', () => window.handleOwnerLogin && window.handleOwnerLogin());
         q('login-form')?.addEventListener('submit', (event) => {
           event.preventDefault();
@@ -563,7 +548,7 @@
   </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js?v=20260427a"></script>
-  <script src="app.js?v=20260917b"></script>
+  <script src="app.js?v=20260917c"></script>
   <script id="soundwav-upcoming-manager">
     (() => {
       return;

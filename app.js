@@ -709,17 +709,19 @@ document.getElementById("owner-toggle")?.addEventListener("click", (event) => {
   openOwnerMode();
 });
 if (supabase) {
-  supabase.auth.onAuthStateChange(async (eventName, session) => {
+  supabase.auth.onAuthStateChange((eventName, session) => {
     const isAdmin = session?.user?.app_metadata?.is_admin === true;
     state.ownerLoggedIn = isAdmin;
     state.ownerAuthMode = isAdmin ? "supabase" : null;
     if (isAdmin) {
       state.ownerShellOpen = APP_PAGE_MODE === "admin";
-      try {
-        await loadOwnerData();
-      } catch (error) {
-        console.error(error);
-      }
+      // Auth callbacks run under the client's lock; fetch after it is released.
+      setTimeout(() => {
+        if (!state.ownerLoggedIn || logoutPending) return;
+        loadOwnerData().then(() => {
+          if (state.ownerLoggedIn && !logoutPending) renderOwnerMode();
+        }).catch(console.error);
+      }, 0);
     }
     renderOwnerMode();
   });
@@ -861,7 +863,31 @@ window.handleOwnerLogin = async function handleOwnerLogin() {
 }
 document.getElementById("login-form").addEventListener("submit", (event) => { event.preventDefault(); handleOwnerLogin(); });
 document.getElementById("login-button").addEventListener("click", handleOwnerLogin);
-document.getElementById("logout-button").addEventListener("click", async () => { if (state.ownerAuthMode === "supabase" && supabase) await supabase.auth.signOut(); state.ownerLoggedIn = false; state.ownerAuthMode = null; localStorage.removeItem(OWNER_SESSION_KEY); if (APP_PAGE_MODE === "admin") { window.location.href = "index.html"; return; } closeOwnerMode(); renderOwnerMode(); setMessage("login-message", "Logged out.", ""); });
+let logoutPending = false;
+document.getElementById("logout-button").addEventListener("click", async (event) => {
+  if (logoutPending) return;
+  logoutPending = true;
+  const button = event.currentTarget;
+  button.disabled = true;
+  button.textContent = "Logging out...";
+  try {
+    if (supabase) {
+      const { error } = await supabase.auth.signOut({ scope: "local" });
+      if (error) throw error;
+    }
+    state.ownerLoggedIn = false;
+    state.ownerAuthMode = null;
+    localStorage.removeItem(OWNER_SESSION_KEY);
+    localStorage.removeItem(OWNER_DATA_CACHE_KEY);
+    window.location.replace("index.html");
+  } catch (error) {
+    window.alert(error.message || "Could not log out. Please try again.");
+  } finally {
+    logoutPending = false;
+    button.disabled = false;
+    button.textContent = "Log out";
+  }
+});
 document.getElementById("site-copy-form").addEventListener("submit", async (event) => { event.preventDefault(); const formData = new FormData(event.currentTarget); const payload = { id: 1, name: formData.get("name"), eyebrow: formData.get("eyebrow"), tagline: formData.get("tagline"), hero_eyebrow: formData.get("heroEyebrow"), hero_title: formData.get("heroTitle"), hero_text: formData.get("heroText"), newsletter_title: formData.get("newsletterTitle"), newsletter_copy: formData.get("newsletterCopy"), archive_title: formData.get("archiveTitle"), archive_copy: formData.get("archiveCopy"), artists_title: formData.get("artistsTitle"), artists_copy: formData.get("artistsCopy"), affiliates_title: formData.get("affiliatesTitle"), affiliates_copy: formData.get("affiliatesCopy"), support_title: formData.get("supportTitle"), support_copy: formData.get("supportCopy"), footer_copy: formData.get("footerCopy"), footer_link_label: formData.get("footerLinkLabel") }; state.ownerView = "site-copy"; applySiteCopyToDom(payload); renderAll(); forceOwnerDomOpen(); renderOwnerPanels(); const { error } = await supabase.from("site_copy").upsert(payload); if (error) return setMessage("site-copy-message", error.message, "error"); await refreshPublicState(); applySiteCopyToDom(state.siteCopy); renderAll(); forceOwnerDomOpen(); renderOwnerPanels(); setMessage("site-copy-message", "Visitor-facing site text updated.", "success"); });
 if (!isEnhancedAdminForm("upcoming-form")) document.getElementById("upcoming-form").addEventListener("submit", async (event) => { event.preventDefault(); const form = event.currentTarget; const formData = new FormData(form); let bannerPath = state.upcomingShow.bannerPath || ""; const uploads = await filePaths("upcoming", form.elements.bannerUpload.files); if (uploads[0]) bannerPath = uploads[0]; const payload = { id: 1, title: formData.get("title"), show_date: formData.get("date"), date_label: formatUpcomingDateLabel(String(formData.get("date") || "")), venue: formData.get("venue"), address: formData.get("address"), description: formData.get("description"), rsvp_link: "", banner_path: bannerPath }; const { error } = await supabase.from("upcoming_show").upsert(payload); if (error) return setMessage("upcoming-message", error.message, "error"); await replaceUpcomingArtists(splitLines(formData.get("artists"))); await refreshPublicState(); forceOwnerDomOpen(); renderAll(); setMessage("upcoming-message", "Upcoming banner updated.", "success"); form.elements.bannerUpload.value = ""; });
 document.getElementById("archive-current-show")?.addEventListener("click", async () => { const u = state.upcomingShow; if (!u.title || !u.date) return setMessage("upcoming-message", "Save the upcoming show first, then archive it.", "error"); const { data, error } = await supabase.from("shows").insert({ title: u.title, show_date: u.date, venue: u.venue, address: u.address || "", description: u.description, banner_path: u.bannerPath || "" }).select("id").single(); if (error) return setMessage("upcoming-message", error.message, "error"); await replaceShowArtists(data.id, u.artists || []); if (u.bannerPath) await supabase.from("show_media").insert({ show_id: data.id, media_kind: "image", storage_path: u.bannerPath, sort_order: 0 }); await supabase.from("upcoming_show").upsert({ id: 1, title: "", show_date: null, date_label: "", venue: "", address: "", description: "", rsvp_link: "", banner_path: "" }); await supabase.from("upcoming_show_artists").delete().eq("upcoming_show_id", 1); await refreshPublicState(); forceOwnerDomOpen(); renderAll(); setMessage("upcoming-message", "Current show archived and banner cleared for the next one.", "success"); });
