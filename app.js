@@ -469,29 +469,21 @@ function renderUpcomingShow() {
   }
 }
 function renderDonations() { const items = (state.donations && state.donations.length) ? state.donations : fallbackData.donations; q("donation-links").innerHTML = items.map((item) => `<article class="donation-card"><h3>${item.label}</h3><p>${item.note}</p><p><strong>${item.handle}</strong></p><a href="${item.url}" target="_blank" rel="noreferrer">Open ${item.label}</a></article>`).join(""); }
-function renderArchive() {
-  q("archive-grid").innerHTML = state.shows.map((show) => `<article class="archive-card" data-show-id="${show.id}" tabindex="0" role="button" aria-label="Open ${show.title}"><img src="${show.banner || ''}" alt="${show.title} flyer"><div class="archive-copy"><p class="eyebrow">${formatDate(show.date)}</p><h3>${show.title}</h3><p>${show.venue}</p></div></article>`).join("");
-  const selected = state.shows.find((show) => String(show.id) === String(state.selectedShowId || "")) || state.shows[0];
-  const detail = q("show-detail");
-  if (!selected) { detail.classList.add("hidden"); detail.classList.add("mobile-collapsed"); return; }
-  const hideMobileDetail = window.innerWidth <= 640 && !state.selectedShowId;
-  if (hideMobileDetail) {
-    detail.classList.add("mobile-collapsed");
-    detail.classList.add("hidden");
-    return;
-  }
-  state.selectedShowId = selected.id;
-  q("archive-grid")?.querySelectorAll("[data-show-id]").forEach((card) => {
-    card.classList.toggle("is-selected", String(card.dataset.showId || "") === String(selected.id || ""));
-  });
-  detail.classList.remove("mobile-collapsed");
-  detail.classList.remove("hidden");
-  const bannerUrl = String(selected.banner || "").trim();
-  const galleryImages = (selected.gallery || []).filter((image, index, items) => {
-    const normalized = String(image || "").trim();
-    return normalized && normalized !== bannerUrl && items.findIndex((entry) => String(entry || "").trim() === normalized) === index;
-  });
-  detail.innerHTML = `<div class="detail-layout"><img src="${selected.banner || ''}" alt="${selected.title} banner"><div><p class="eyebrow">${formatDate(selected.date)}</p><h3>${selected.title}</h3><p>${selected.description}</p><ul class="meta-list"><li>${selected.venue}</li>${selected.address ? `<li>${selected.address}</li>` : ""}${renderArtistMetaListItems(selected.artists || [])}</ul>${galleryImages.length ? `<div class="gallery-grid">${galleryImages.map((image) => `<img src="${image}" alt="${selected.title} photo">`).join("")}</div>` : ""}<div class="video-grid">${selected.videos.map((url) => `<a class="social-link" href="${url}" target="_blank" rel="noreferrer">Video link</a>`).join("")}</div></div></div>`;
+function renderArchive(shows = state.shows) {
+  q("archive-grid").innerHTML = shows.map((show) => {
+    const title = escapeHtml(show.title || "Show");
+    const banner = String(show.banner || "").trim();
+    const gallery = [...new Set(show.gallery || [])].filter((image) => image && image !== banner);
+    return `<article class="archive-card" data-show-id="${escapeHtml(show.id)}">
+      ${banner ? `<img class="archive-flyer" src="${escapeHtml(banner)}" alt="${title} flyer">` : ""}
+      <div class="archive-copy"><p class="eyebrow">${formatDate(show.date)}</p><h3>${title}</h3>
+      <p>${escapeHtml(show.venue || "")}${show.address ? `<br>${escapeHtml(show.address)}` : ""}</p>
+      <ul class="archive-artists">${(show.artists || []).map((name) => `<li>${renderArtistJumpLink(escapeHtml(name))}</li>`).join("")}</ul>
+      ${show.description ? `<p>${escapeHtml(show.description)}</p>` : ""}
+      ${gallery.length ? `<div class="gallery-grid">${gallery.map((image) => `<a href="${escapeHtml(image)}" target="_blank" rel="noreferrer"><img src="${escapeHtml(image)}" alt="${title} photo" loading="lazy"></a>`).join("")}</div>` : ""}
+      <div class="video-grid">${(show.videos || []).map((url) => `<a class="social-link" href="${escapeHtml(url)}" target="_blank" rel="noreferrer">Video link</a>`).join("")}</div></div>
+    </article>`;
+  }).join("");
 }
 function platformLinks(links) {
   const defs = [["instagram", "IG"], ["spotify", "SP"], ["soundcloud", "SC"], ["bandcamp", "BC"], ["website", "SITE"], ["linktree", "LT"]];
@@ -881,8 +873,6 @@ if (!isEnhancedAdminForm("show-form")) document.getElementById("show-form").addE
 document.getElementById("clear-show-form").addEventListener("click", clearShowForm);
 if (!isEnhancedAdminForm("affiliate-form")) document.getElementById("affiliate-form").addEventListener("submit", async (event) => { event.preventDefault(); const formData = new FormData(event.currentTarget); const id = String(formData.get("affiliateId") || ""); const payload = { name: formData.get("name"), blurb: formData.get("blurb"), url: formData.get("url") }; const result = id ? await supabase.from("affiliates").update(payload).eq("id", id) : await supabase.from("affiliates").insert(payload); if (result.error) return setMessage("affiliate-message", result.error.message, "error"); await refreshPublicState(); forceOwnerDomOpen(); renderAll(); clearAffiliateForm(); setMessage("affiliate-message", id ? "Affiliate updated." : "Affiliate added.", "success"); });
 document.getElementById("clear-affiliate-form").addEventListener("click", clearAffiliateForm);
-document.getElementById("archive-grid").addEventListener("click", (event) => { const card = event.target.closest("[data-show-id]"); if (!card) return; state.selectedShowId = card.dataset.showId; renderArchive(); q("show-detail").scrollIntoView({ behavior: "smooth", block: "start" }); });
-document.getElementById("archive-grid").addEventListener("keydown", (event) => { if (event.key !== "Enter" && event.key !== " ") return; const card = event.target.closest("[data-show-id]"); if (!card) return; event.preventDefault(); state.selectedShowId = card.dataset.showId; renderArchive(); });
 document.addEventListener("click", (event) => {
   const trigger = event.target.closest("[data-artist-jump]");
   if (!trigger) return;
@@ -900,6 +890,7 @@ if (!isEnhancedAdminRegion("subscriber-list")) document.getElementById("subscrib
 window.__soundwavState = state;
 window.__soundwavRenderSiteCopy = renderSiteCopy;
 window.__soundwavRenderAll = renderAll;
+window.__soundwavRenderArchive = renderArchive;
 window.__soundwavArtistPlaceholder = ARTIST_PLACEHOLDER;
 window.__soundwavArtistPlaceholderKey = ARTIST_PLACEHOLDER_KEY;
 window.__soundwavBuildNewsletterEmailPayload = buildNewsletterEmailPayload;

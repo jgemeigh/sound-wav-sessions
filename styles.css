@@ -255,6 +255,14 @@ textarea { resize: vertical; }
   .show-detail.mobile-collapsed { display: none !important; }
 }
 
+.archive-grid { grid-template-columns: none; grid-template-rows: auto; grid-auto-columns: 100%; align-items: start; scroll-snap-type: x mandatory; touch-action: pan-x pan-y; }
+.archive-card { cursor: default; min-width: 0; border-radius: 8px; }
+.archive-card .archive-flyer { width: 100%; height: auto; max-height: 80vh; object-fit: contain; display: block; }
+.archive-copy { overflow-wrap: anywhere; }
+.archive-artists { display: flex; flex-wrap: wrap; gap: .6rem; list-style: none; padding: 0; }
+.archive-artists li { min-width: 0; max-width: 100%; }
+.archive-artists .social-link { white-space: normal; }
+.archive-card .gallery-grid img { width: 120px; height: 120px; object-fit: cover; }
 .latest-newsletter-card, .owner-subpanel { background: var(--panel-alt); }
 .latest-newsletter-card { margin-top: 1rem; }
 .newsletter-body,

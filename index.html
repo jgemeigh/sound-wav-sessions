@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260820d">
+  <link rel="stylesheet" href="styles.css?v=20260917a">
 </head>
 <body data-app-page="public">
   <canvas id="soundwave-bg" aria-hidden="true"></canvas>
@@ -130,7 +130,6 @@
             </div>
           </div>
         </div>
-        <article id="show-detail" class="show-detail hidden"></article>
         <div id="archive-grid" class="archive-grid"></div>
       </section>
 
@@ -559,7 +558,7 @@
   </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js?v=20260427a"></script>
-  <script src="app.js?v=20260916b"></script>
+  <script src="app.js?v=20260917a"></script>
   <script id="soundwav-upcoming-manager">
     (() => {
       return;
@@ -3071,32 +3070,6 @@
           }, 2400));
         });
       };
-      const renderArchiveDetail = (shows, selectedId) => {
-        const archiveGrid = q("archive-grid");
-        const showDetail = q("show-detail");
-        if (archiveGrid) {
-          archiveGrid.querySelectorAll("[data-show-id]").forEach((card) => {
-            card.classList.toggle("is-selected", String(card.dataset.showId || "") === String(selectedId || ""));
-          });
-        }
-        if (!showDetail) return;
-        const selected = shows.find((show) => String(show.id) === String(selectedId || "")) || shows[0];
-        if (!selected) {
-          showDetail.classList.add("hidden");
-          showDetail.classList.add("mobile-collapsed");
-          return;
-        }
-        const hideMobileDetail = window.innerWidth <= 640 && !selectedId;
-        if (hideMobileDetail) {
-          showDetail.classList.add("mobile-collapsed");
-          showDetail.classList.add("hidden");
-          return;
-        }
-        if (window.__soundwavState) window.__soundwavState.selectedShowId = selected.id;
-        showDetail.classList.remove("mobile-collapsed");
-        showDetail.classList.remove("hidden");
-        showDetail.innerHTML = '<div class="detail-layout"><img src="' + (selected.banner || "") + '" alt="' + (selected.title || "Show") + ' banner"><div><p class="eyebrow">' + formatPublicDate(selected.date) + '</p><h3>' + (selected.title || "") + '</h3><p>' + (selected.description || "") + '</p><ul class="meta-list"><li>' + (selected.venue || "") + '</li>' + (selected.address ? ('<li>' + selected.address + '</li>') : '') + (selected.artists || []).map((artist) => '<li>' + artist + '</li>').join("") + '</ul><div class="gallery-grid">' + (selected.gallery || []).map((image) => '<img src="' + image + '" alt="' + (selected.title || "Show") + ' photo">').join("") + '</div><div class="video-grid">' + (selected.videos || []).map((url) => '<a class="social-link" href="' + url + '" target="_blank" rel="noreferrer">Video link</a>').join("") + '</div></div></div>';
-      };
       const renderPublicEntitySections = () => {
         const publicCache = getPublicCache();
         const shows = Array.isArray(window.__soundwavState?.shows) && window.__soundwavState.shows.length
@@ -3115,11 +3088,7 @@
           ? window.__soundwavState.donations
           : ((publicCache.donations && publicCache.donations.length) ? publicCache.donations : (window.__soundwavFallbackDonations || []));
 
-        const archiveGrid = q("archive-grid");
-        if (archiveGrid) {
-          archiveGrid.innerHTML = shows.map((show) => '<article class="archive-card" data-show-id="' + show.id + '" tabindex="0" role="button" aria-label="Open ' + (show.title || "show") + '"><img src="' + (show.banner || "") + '" alt="' + (show.title || "Show") + ' flyer"><div class="archive-copy"><p class="eyebrow">' + formatPublicDate(show.date) + '</p><h3>' + (show.title || "") + '</h3><p>' + (show.venue || "") + '</p></div></article>').join("");
-        }
-        renderArchiveDetail(shows, window.__soundwavState?.selectedShowId);
+        window.__soundwavRenderArchive?.(shows);
 
         const artistGrid = q("artist-grid");
         if (artistGrid) {
@@ -3183,41 +3152,6 @@
             node.classList.toggle("active", node === thumb);
           });
         });
-      };
-      const bindPublicArchiveSelection = () => {
-        const archiveGrid = q("archive-grid");
-        if (!archiveGrid || archiveGrid.dataset.selectionBound === "true") return;
-        archiveGrid.dataset.selectionBound = "true";
-        const selectCard = (card) => {
-          if (!card) return;
-          const publicCache = getPublicCache();
-          const shows = Array.isArray(window.__soundwavState?.shows) && window.__soundwavState.shows.length
-            ? window.__soundwavState.shows
-            : (publicCache.shows || []);
-          if (window.__soundwavState) window.__soundwavState.selectedShowId = card.dataset.showId;
-          renderArchiveDetail(shows, card.dataset.showId);
-          const detail = q("show-detail");
-          if (detail) {
-            detail.classList.remove("mobile-collapsed");
-            detail.classList.remove("hidden");
-            detail.scrollIntoView({ behavior: "smooth", block: "start" });
-          }
-        };
-        archiveGrid.addEventListener("click", (event) => {
-          const card = event.target.closest("[data-show-id]");
-          if (!card) return;
-          event.preventDefault();
-          event.stopImmediatePropagation();
-          selectCard(card);
-        }, true);
-        archiveGrid.addEventListener("keydown", (event) => {
-          if (event.key !== "Enter" && event.key !== " ") return;
-          const card = event.target.closest("[data-show-id]");
-          if (!card) return;
-          event.preventDefault();
-          event.stopImmediatePropagation();
-          selectCard(card);
-        }, true);
       };
       const getCurrentNewsletterId = () => {
         const newsletters = (window.__soundwavState?.newsletters && window.__soundwavState.newsletters.length)
@@ -4536,7 +4470,6 @@
         });
         renderOwnerDataPanels();
         renderPublicEntitySections();
-        bindPublicArchiveSelection();
         bindPublicArtistThumbs();
         hydratePublicEntities();
         hydrateOwnerEntities();
@@ -4569,12 +4502,10 @@
         window.addEventListener("soundwav:show-public-site", () => {
           hydratePublicEntities();
           renderPublicEntitySections();
-          bindPublicArchiveSelection();
           bindPublicArtistThumbs();
         });
         window.addEventListener("soundwav:public-state-updated", () => {
           renderPublicEntitySections();
-          bindPublicArchiveSelection();
           bindPublicArtistThumbs();
         });
       });
@@ -4611,7 +4542,7 @@
         if (!container) return;
         const cards = getCards(container);
         if (!cards.length) return;
-        const step = isMobile() ? 1 : 2;
+        const step = containerId === "archive-grid" || isMobile() ? 1 : 2;
         scrollToIndex(container, currentIndex(container) + (direction * step));
       };
       const bindSwipe = (containerId, itemSelector, onSwipeLeft, onSwipeRight) => {
@@ -4688,7 +4619,6 @@
         q("archive-prev")?.addEventListener("click", () => moveCarousel("archive-grid", -1));
         q("archive-next")?.addEventListener("click", () => moveCarousel("archive-grid", 1));
         bindSwipe("artist-grid", ".artist-card", () => moveCarousel("artist-grid", 1), () => moveCarousel("artist-grid", -1));
-        bindSwipe("archive-grid", ".archive-card", () => moveCarousel("archive-grid", 1), () => moveCarousel("archive-grid", -1));
       });
     })();
   </script>
