@@ -16,6 +16,9 @@ type Newsletter = {
   subject: string;
   body: string;
   is_current?: boolean;
+  sent_at?: string | null;
+  broadcast_locked_at?: string | null;
+  broadcast_started_at?: string | null;
 };
 
 type UpcomingShowRow = {
@@ -260,7 +263,7 @@ serve(async (request) => {
 
     const { data: newsletter, error: newsletterError } = await serviceClient
       .from("newsletters")
-      .select("id, subject, body, is_current")
+      .select("id, subject, body, is_current, sent_at, broadcast_locked_at, broadcast_started_at")
       .eq("id", newsletterId)
       .single<Newsletter>();
     if (newsletterError || !newsletter) {
@@ -268,6 +271,9 @@ serve(async (request) => {
     }
     if (!newsletter.is_current) {
       return json({ error: "Only the current newsletter can be broadcast." }, { status: 400 });
+    }
+    if (newsletter.sent_at || newsletter.broadcast_locked_at || newsletter.broadcast_started_at) {
+      return json({ error: "This newsletter is locked or has already been broadcast. Create a new newsletter to send another update." }, { status: 409 });
     }
 
     const { data: currentShow } = await serviceClient
@@ -308,6 +314,17 @@ serve(async (request) => {
     const chunks = chunk(uniqueRecipients, RECIPIENT_CHUNK_SIZE);
     const responses: unknown[] = [];
     const gmailAccessToken = await getGmailAccessToken();
+
+    // Claim before sending. Keep the claim after failures: Gmail may have accepted a partial send.
+    if (mode === "live") {
+      const claim = await serviceClient.from("newsletters")
+        .update({ broadcast_started_at: new Date().toISOString() })
+        .eq("id", newsletter.id).eq("is_current", true)
+        .is("sent_at", null).is("broadcast_locked_at", null).is("broadcast_started_at", null)
+        .select("id").maybeSingle();
+      if (claim.error) throw claim.error;
+      if (!claim.data) return json({ error: "This newsletter is locked or a broadcast has already started." }, { status: 409 });
+    }
 
     for (const recipientChunk of chunks) {
       const responseBody = await sendGmailMessage({
