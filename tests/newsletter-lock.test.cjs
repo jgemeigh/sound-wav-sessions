@@ -21,6 +21,7 @@ function setup(fields = {}, failSend = false) {
         select() { return query; },
         eq(key, value) { conditions.push(() => row[key] === value); return query; },
         is(key, value) { conditions.push(() => (row[key] ?? null) === value); return query; },
+        or(expression) { conditions.push(() => !row.broadcast_started_at || row.broadcast_started_at < expression.split('.lt.')[1]); return query; },
         update(value) { update = value; return query; },
         order() { return query; },
         single() { return Promise.resolve({ data: { ...row } }); },
@@ -57,7 +58,7 @@ function setup(fields = {}, failSend = false) {
   };
 }
 
-for (const field of ['sent_at', 'broadcast_locked_at', 'broadcast_started_at']) {
+for (const field of ['broadcast_locked_at']) {
   test(`${field} blocks live and test sends`, async () => {
     const app = setup({ [field]: '2026-09-17T00:00:00Z' });
     assert.equal((await app.call()).status, 409);
@@ -72,10 +73,11 @@ test('simultaneous broadcasts send only once', async () => {
   assert.equal(app.sends(), 1);
   assert.ok(app.row.sent_at);
 });
-test('uncertain send failure remains locked against retries', async () => {
+test('send failure releases temporary claim without creating a manual lock', async () => {
   const app = setup({}, true);
   assert.equal((await app.call()).status, 500);
-  assert.equal((await app.call()).status, 409);
+  assert.equal(app.row.broadcast_started_at, null);
+  assert.equal(app.row.broadcast_locked_at, undefined);
   assert.equal(app.sends(), 1);
 });
 test('test send leaves an unsent draft available for live broadcast', async () => {
@@ -83,7 +85,22 @@ test('test send leaves an unsent draft available for live broadcast', async () =
   assert.equal((await app.call('test')).status, 200);
   assert.equal(app.row.broadcast_started_at, undefined);
   assert.equal((await app.call()).status, 200);
+  assert.equal((await app.call()).status, 200);
+});
+test('previously sent newsletters can be broadcast again when unlocked', async () => {
+  const app = setup({ sent_at: '2026-09-17T00:00:00Z' });
+  assert.equal((await app.call()).status, 200);
+  assert.equal(app.row.broadcast_started_at, null);
+});
+test('manual unlock allows sending again', async () => {
+  const app = setup({ broadcast_locked_at: '2026-09-17T00:00:00Z' });
   assert.equal((await app.call()).status, 409);
+  app.row.broadcast_locked_at = null;
+  assert.equal((await app.call()).status, 200);
+});
+test('stale temporary claim expires', async () => {
+  const app = setup({ broadcast_started_at: '2020-01-01T00:00:00Z' });
+  assert.equal((await app.call()).status, 200);
 });
 test('admin inline scripts parse', () => {
   const html = fs.readFileSync('admin.html', 'utf8');
@@ -102,10 +119,16 @@ test('admin shows lock control for drafts and hides sending for every locked sta
       const markup = vm.runInNewContext(`(${renderer})(item)`, {
         item, currentNewsletter: item, editingNewsletterId: editing ? item.id : '', Date
       });
-      assert.equal(markup.includes('data-broadcast-newsletter-id'), !field);
-      assert.equal(markup.includes('data-test-broadcast-newsletter-id'), !field);
-      assert.equal(markup.includes('data-lock-newsletter-id'), !field);
-      assert.equal(markup.includes('Broadcast locked'), !!field);
+      const locked = field === 'broadcast_locked_at';
+      assert.equal(markup.includes('data-broadcast-newsletter-id'), !locked);
+      assert.equal(markup.includes('data-test-broadcast-newsletter-id'), !locked);
+      assert.equal(markup.includes('data-lock-newsletter-id'), true);
+      assert.equal(markup.includes('Unlock broadcast'), locked);
+      assert.equal(markup.includes('Broadcast locked'), locked);
+      const nonCurrent = vm.runInNewContext(`(${renderer})(item)`, {
+        item, currentNewsletter: { id: 'other' }, editingNewsletterId: editing ? item.id : '', Date
+      });
+      assert.equal(nonCurrent.includes('data-set-current-newsletter-id'), true);
     }
   }
 });

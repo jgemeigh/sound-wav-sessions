@@ -272,8 +272,8 @@ serve(async (request) => {
     if (!newsletter.is_current) {
       return json({ error: "Only the current newsletter can be broadcast." }, { status: 400 });
     }
-    if (newsletter.sent_at || newsletter.broadcast_locked_at || newsletter.broadcast_started_at) {
-      return json({ error: "This newsletter is locked or has already been broadcast. Create a new newsletter to send another update." }, { status: 409 });
+    if (newsletter.broadcast_locked_at) {
+      return json({ error: "Broadcast is locked. Unlock this newsletter in admin before sending." }, { status: 409 });
     }
 
     const { data: currentShow } = await serviceClient
@@ -315,17 +315,20 @@ serve(async (request) => {
     const responses: unknown[] = [];
     const gmailAccessToken = await getGmailAccessToken();
 
-    // Claim before sending. Keep the claim after failures: Gmail may have accepted a partial send.
+    // A short-lived claim prevents simultaneous live sends without locking future broadcasts.
+    const claimTime = new Date().toISOString();
     if (mode === "live") {
       const claim = await serviceClient.from("newsletters")
-        .update({ broadcast_started_at: new Date().toISOString() })
+        .update({ broadcast_started_at: claimTime })
         .eq("id", newsletter.id).eq("is_current", true)
-        .is("sent_at", null).is("broadcast_locked_at", null).is("broadcast_started_at", null)
+        .is("broadcast_locked_at", null)
+        .or(`broadcast_started_at.is.null,broadcast_started_at.lt.${new Date(Date.now() - 600000).toISOString()}`)
         .select("id").maybeSingle();
       if (claim.error) throw claim.error;
       if (!claim.data) return json({ error: "This newsletter is locked or a broadcast has already started." }, { status: 409 });
     }
 
+    try {
     for (const recipientChunk of chunks) {
       const responseBody = await sendGmailMessage({
         accessToken: gmailAccessToken,
@@ -358,6 +361,13 @@ serve(async (request) => {
       batches: chunks.length,
       providerResponses: responses,
     });
+    } finally {
+      if (mode === "live") {
+        const release = await serviceClient.from("newsletters")
+          .update({ broadcast_started_at: null }).eq("id", newsletter.id).eq("broadcast_started_at", claimTime);
+        if (release.error) console.error("Could not release temporary broadcast claim", release.error);
+      }
+    }
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : "Broadcast failed" }, { status: 500 });
   }
