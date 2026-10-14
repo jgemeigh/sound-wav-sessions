@@ -57,6 +57,9 @@ serve(async (request) => {
 
     let result = await admin.from("subscribers").insert({ email, name, active: true });
     if (result.error && (result.error.code === "23505" || /duplicate key/i.test(result.error.message || ""))) {
+      const existing = await admin.from("subscribers").select("active").eq("email", email).single();
+      if (existing.error) return json({ error: "Could not check subscription." }, { status: 400 });
+      if (existing.data?.active) return json({ ok: true, alreadySubscribed: true });
       const updatePayload = rawName ? { name: rawName, active: true } : { active: true };
       result = await admin.from("subscribers").update(updatePayload).eq("email", email);
     }
@@ -64,7 +67,7 @@ serve(async (request) => {
       return json({ error: "Could not save subscriber." }, { status: 400 });
     }
 
-    return json({ ok: true });
+    return json({ ok: true, alreadySubscribed: false });
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : "Unexpected error." }, { status: 500 });
   }

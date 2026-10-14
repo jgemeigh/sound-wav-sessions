@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { sendArtistConfirmation } from "./confirmation.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -60,12 +61,25 @@ serve(async (request) => {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
+    // Avoid repeated receipt emails to the same address within a day.
+    const recent = await admin.from("artist_submissions").select("id").eq("email", payload.email)
+      .gte("created_at", new Date(Date.now() - 86400000).toISOString()).limit(1);
     const result = await admin.from("artist_submissions").insert(payload).select("*").single();
     if (result.error) {
       return json({ error: "Could not save submission." }, { status: 400 });
     }
 
-    return json({ ok: true, submissionId: result.data?.id || null });
+    let confirmationEmail = "skipped";
+    if (!recent.error && !recent.data?.length) {
+      try {
+        await sendArtistConfirmation(payload.email);
+        confirmationEmail = "sent";
+      } catch (error) {
+        console.error("Artist confirmation failed", result.data?.id, error);
+        confirmationEmail = "failed";
+      }
+    }
+    return json({ ok: true, submissionId: result.data?.id || null, confirmationEmail });
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : "Unexpected error." }, { status: 500 });
   }

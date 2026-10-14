@@ -838,7 +838,11 @@ artistSubmissionCity?.addEventListener("blur", () => {
 });
 artistSubmissionForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
+  if (artistSubmissionForm.dataset.submitting === "true") return;
   if (!event.currentTarget.reportValidity()) return;
+  artistSubmissionForm.dataset.submitting = "true";
+  const submitButton = artistSubmissionForm.querySelector('[type="submit"]');
+  if (submitButton) submitButton.disabled = true;
   const formData = new FormData(event.currentTarget);
   const payload = {
     name: String(formData.get("name") || "").trim(),
@@ -865,14 +869,17 @@ artistSubmissionForm?.addEventListener("submit", async (event) => {
       renderAll();
     }
     renderSubmissions();
-    event.currentTarget.reset();
-    setMessage("artist-message", "Submission received. We will hit you back soon.", "success");
+    artistSubmissionForm.reset();
+    setMessage("artist-message", "Submission received. We will reach out when the next show date is lined up.", "success");
   } catch (error) {
     state.submissions = state.submissions.filter((item) => item.id !== tempId);
     if (window.__soundwavState) window.__soundwavState.submissions = state.submissions;
     persistOwnerData();
     renderSubmissions();
     setMessage("artist-message", error.message || "Could not submit artist info.", "error");
+  } finally {
+    delete artistSubmissionForm.dataset.submitting;
+    if (submitButton) submitButton.disabled = false;
   }
 });
 

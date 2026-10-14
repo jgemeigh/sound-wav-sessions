@@ -548,7 +548,7 @@
   </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js?v=20260427a"></script>
-  <script src="app.js?v=20260917c"></script>
+  <script src="app.js?v=20261014a"></script>
   <script id="soundwav-upcoming-manager">
     (() => {
       return;
@@ -4154,12 +4154,12 @@
             const result = await response.json().catch(() => ({}));
             if (!response.ok) throw new Error(result?.error || "Could not submit artist info.");
             const currentSubs = window.__soundwavState?.submissions || [];
-            const nextSubs = [result.submission, ...currentSubs.filter((item) => item.id !== tempId)];
+            const nextSubs = [{ id: result.submissionId, ...payload, status: 'New', created_at: new Date().toISOString() }, ...currentSubs.filter((item) => item.id !== tempId)];
             if (window.__soundwavState) window.__soundwavState.submissions = nextSubs;
             setOwnerCache({ submissions: nextSubs });
             renderOwnerDataPanels();
             artistSubmissionForm.reset();
-            setFormMessage("artist-message", "Submission received. We will hit you back soon.", "success");
+            setFormMessage("artist-message", "Submission received. We will reach out when the next show date is lined up.", "success");
           } catch (error) {
             console.error(error);
             const rolledBack = (window.__soundwavState?.submissions || []).filter((item) => item.id !== tempId);
@@ -4877,6 +4877,7 @@
           };
           directForm.addEventListener("submit", async (event) => {
             event.preventDefault();
+            if (directForm.dataset.submitting === "true") return;
             const formData = new FormData(directForm);
             const email = String(formData.get("email") || "").trim().toLowerCase();
             const name = String(formData.get("name") || "").trim();
@@ -4888,6 +4889,9 @@
               setNewsletterFormMessage("Newsletter signup is not configured on this page.", "error");
               return;
             }
+            directForm.dataset.submitting = "true";
+            const submitButton = directForm.querySelector('[type="submit"]');
+            if (submitButton) submitButton.disabled = true;
             setNewsletterFormMessage("Joining the SOUND.WAV list...", "success");
             try {
               const response = await fetch(functionBaseUrl + "/newsletter-signup", {
@@ -4904,9 +4908,12 @@
                 throw new Error(payload?.error || "Could not join the list.");
               }
               directForm.reset();
-              setNewsletterFormMessage("You are on the SOUND.WAV list.", "success");
+              setNewsletterFormMessage(payload.alreadySubscribed ? "You are already subscribed to the SOUND.WAV list." : "You are on the SOUND.WAV list.", "success");
             } catch (error) {
               setNewsletterFormMessage(error?.message || "Could not join the list.", "error");
+            } finally {
+              delete directForm.dataset.submitting;
+              if (submitButton) submitButton.disabled = false;
             }
           });
         }
