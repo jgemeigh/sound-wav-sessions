@@ -3,6 +3,15 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 
+test('newsletter renderer escapes saved content and has no inline event handlers', () => {
+  const {render} = require('../admin-newsletters.js');
+  const html = render([{id:'fixture',subject:'<img onerror=alert(1)>',body:'</textarea><script>alert(1)</script>'}], 'fixture');
+  assert.ok(!html.includes('<script>'));
+  assert.ok(!html.includes('<img'));
+  assert.ok(!html.includes('onclick='));
+  assert.ok(html.includes('&lt;script&gt;'));
+});
+
 const source = fs.readFileSync('supabase/functions/broadcast-newsletter/index.ts', 'utf8');
 const handlerSource = source.slice(source.indexOf('serve(async (request)'))
   .replace(/\.(single|maybeSingle)<\w+>\(/g, '.$1(')
@@ -109,25 +118,18 @@ test('admin inline scripts parse', () => {
   }
 });
 test('admin shows lock control for drafts and hides sending for every locked state', () => {
-  const html = fs.readFileSync('admin.html', 'utf8');
-  const start = html.indexOf('? newsletters.map((item) => {');
-  const end = html.indexOf('}).join("")', start);
-  const renderer = html.slice(start + '? newsletters.map('.length, end + 1);
+  const { render } = require('../admin-newsletters.js');
   for (const editing of [false, true]) {
     for (const field of [null, 'sent_at', 'broadcast_locked_at', 'broadcast_started_at']) {
       const item = { id: 'fixture', subject: 'Fixture', body: 'Fixture', ...(field ? { [field]: '2026-09-17' } : {}) };
-      const markup = vm.runInNewContext(`(${renderer})(item)`, {
-        item, currentNewsletter: item, editingNewsletterId: editing ? item.id : '', Date
-      });
+      const markup = render([item], editing ? item.id : '');
       const locked = field === 'broadcast_locked_at';
       assert.equal(markup.includes('data-broadcast-newsletter-id'), !locked);
       assert.equal(markup.includes('data-test-broadcast-newsletter-id'), !locked);
       assert.equal(markup.includes('data-lock-newsletter-id'), true);
       assert.equal(markup.includes('Unlock broadcast'), locked);
       assert.equal(markup.includes('Broadcast locked'), locked);
-      const nonCurrent = vm.runInNewContext(`(${renderer})(item)`, {
-        item, currentNewsletter: { id: 'other' }, editingNewsletterId: editing ? item.id : '', Date
-      });
+      const nonCurrent = render([{id:'other', is_current:true}, item], editing ? item.id : '');
       assert.equal(nonCurrent.includes('data-set-current-newsletter-id'), true);
     }
   }

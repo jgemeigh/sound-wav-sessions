@@ -738,7 +738,8 @@ async function initialize() {
   state.ownerShellOpen = APP_PAGE_MODE === "admin";
   if (APP_PAGE_MODE === "public") {
     if (!supabase) throw new Error("Site connection unavailable.");
-    await loadPublicData();
+    window.__soundwavPublicReady = loadPublicData();
+    await window.__soundwavPublicReady;
     renderAll();
     const hero = q("upcoming-hero-image");
     if (hero?.getAttribute("src")) await hero.decode().catch(() => {});
@@ -749,7 +750,8 @@ async function initialize() {
   localStorage.removeItem(OWNER_SESSION_KEY);
   if (supabase) {
     try {
-      await loadPublicData();
+      window.__soundwavPublicReady = loadPublicData();
+      await window.__soundwavPublicReady;
       const { data, error } = await supabase.auth.getUser();
       if (error && error.name !== "AuthSessionMissingError") throw error;
       if (data.user?.app_metadata?.is_admin === true) {
