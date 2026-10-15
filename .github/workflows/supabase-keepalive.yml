@@ -5,12 +5,17 @@ on:
     - cron: "17 */12 * * *"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   ping:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - name: Ping project health endpoint
-        run: |
-          curl --fail --show-error --silent \
-            --request GET \
-            "https://dafqbhphoeblxpfrizwx.supabase.co/functions/v1/project-health"
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check public database read
+        run: node scripts/supabase-keepalive.cjs
